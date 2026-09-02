@@ -57,6 +57,7 @@ const MEALS = [
 function Index() {
   const today = useMemo(sfToday, []);
   const [monthIndex, setMonthIndex] = useState(today.getMonth());
+  const [view, setView] = useState<"calendar" | "list">("calendar");
   const year = today.getFullYear();
   const month = MONTHS[monthIndex]!;
   const isCurrentMonth = monthIndex === today.getMonth();
