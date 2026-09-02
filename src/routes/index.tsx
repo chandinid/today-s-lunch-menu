@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { fetchMonthMenu, type MenuDay } from "@/lib/menu.functions";
+import { MenuCalendar } from "@/components/MenuCalendar";
 
 const MONTHS = [
   "January",
@@ -56,6 +57,7 @@ const MEALS = [
 function Index() {
   const today = useMemo(sfToday, []);
   const [monthIndex, setMonthIndex] = useState(today.getMonth());
+  const [view, setView] = useState<"calendar" | "list">("calendar");
   const year = today.getFullYear();
   const month = MONTHS[monthIndex]!;
   const isCurrentMonth = monthIndex === today.getMonth();
@@ -134,6 +136,23 @@ function Index() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-2xl">The whole month</h2>
           <div className="flex items-center gap-2">
+            <div className="mr-1 flex rounded-full border border-border bg-card p-1">
+              {(["calendar", "list"] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setView(v)}
+                  aria-pressed={view === v}
+                  className={`rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-widest transition-colors ${
+                    view === v
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-primary"
+                  }`}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
             <NavButton
               label="Previous month"
               onClick={() => setMonthIndex((i) => (i + 11) % 12)}
@@ -149,23 +168,38 @@ function Index() {
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          {isPending
-            ? Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-28 animate-pulse rounded-2xl border border-border bg-card/70"
-                />
-              ))
-            : days.map((d) => (
-                <DayCard
-                  key={d.day}
-                  entry={d}
-                  isToday={isCurrentMonth && d.day === today.getDate()}
-                  month={month}
-                />
-              ))}
-        </div>
+        {isPending ? (
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-28 animate-pulse rounded-2xl border border-border bg-card/70"
+              />
+            ))}
+          </div>
+        ) : view === "calendar" ? (
+          <div className="mt-5">
+            <MenuCalendar
+              monthIndex={monthIndex}
+              year={year}
+              month={month}
+              days={days}
+              todayDate={isCurrentMonth ? today.getDate() : null}
+            />
+          </div>
+        ) : (
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {days.map((d) => (
+              <DayCard
+                key={d.day}
+                entry={d}
+                isToday={isCurrentMonth && d.day === today.getDate()}
+                month={month}
+              />
+            ))}
+          </div>
+        )}
+
 
         {!isPending && days.length === 0 && data?.ok ? (
           <Notice
