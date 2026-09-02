@@ -48,9 +48,9 @@ function sfToday() {
 }
 
 const MEALS = [
-  { key: "breakfast", label: "Breakfast", emoji: "🥣" },
-  { key: "lunch", label: "Lunch", emoji: "🍽️" },
-  { key: "snack", label: "Snack", emoji: "🍎" },
+  { key: "breakfast", label: "Breakfast" },
+  { key: "lunch", label: "Lunch" },
+  { key: "snack", label: "Snack" },
 ] as const;
 
 function Index() {
@@ -107,9 +107,7 @@ function Index() {
                 className="rounded-3xl border border-border bg-card p-5 shadow-[var(--shadow-card)]"
               >
                 <div className="flex items-center gap-2">
-                  <span aria-hidden className="text-xl">
-                    {meal.emoji}
-                  </span>
+                  <span aria-hidden className="h-2 w-2 rounded-full bg-accent" />
                   <h2 className="text-sm font-bold uppercase tracking-widest text-primary">
                     {meal.label}
                   </h2>
