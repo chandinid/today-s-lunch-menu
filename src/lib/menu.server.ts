@@ -1,0 +1,164 @@
+import { extractText, getDocumentProxy } from "unpdf";
+
+export const MENUS_PAGE_URL =
+  "https://www.sfusd.edu/services/health-wellness/nutrition-school-meals/menus";
+
+export const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+] as const;
+
+export type MenuDay = {
+  day: number;
+  breakfast: string | null;
+  lunch: string | null;
+  snack: string | null;
+};
+
+export type MonthMenu = {
+  month: string;
+  year: number;
+  sourceUrl: string;
+  pdfUrl: string;
+  days: MenuDay[];
+};
+
+type CacheEntry = { value: MonthMenu; expires: number };
+const cache = new Map<string, CacheEntry>();
+const TTL_MS = 1000 * 60 * 60 * 6;
+
+/** Scrape the SFUSD menus page for the "LunchMaster PreK" Drive file per month. */
+export async function findPreKMenuFiles(): Promise<Record<string, string>> {
+  const res = await fetch(MENUS_PAGE_URL, {
+    headers: { "user-agent": "Mozilla/5.0 (compatible; SchoolMenuBot/1.0)" },
+  });
+  if (!res.ok) throw new Error(`Could not load the SFUSD menus page (${res.status})`);
+  const html = await res.text();
+
+  const headings: { month: string; index: number }[] = [];
+  const headingRe = /<h[23][^>]*>\s*([A-Z][a-z]+)\s+Menus\s*<\/h[23]>/g;
+  let m: RegExpExecArray | null;
+  while ((m = headingRe.exec(html))) {
+    const month = m[1] as string;
+    if ((MONTHS as readonly string[]).includes(month)) {
+      headings.push({ month, index: m.index });
+    }
+  }
+
+  const result: Record<string, string> = {};
+  headings.forEach((h, i) => {
+    const end = headings[i + 1]?.index ?? html.length;
+    const chunk = html.slice(h.index, end);
+    const linkRe =
+      /<a[^>]+href="https:\/\/drive\.google\.com\/file\/d\/([^/"]+)[^"]*"[^>]*>([\s\S]{0,200}?)<\/a>/g;
+    let l: RegExpExecArray | null;
+    while ((l = linkRe.exec(chunk))) {
+      const text = (l[2] ?? "").replace(/<[^>]*>/g, "");
+      if (/pre\s*-?\s*k/i.test(text)) {
+        result[h.month] = l[1] as string;
+        break;
+      }
+    }
+  });
+
+  return result;
+}
+
+async function pdfPages(fileId: string): Promise<string[]> {
+  const res = await fetch(`https://drive.google.com/uc?export=download&id=${fileId}`, {
+    headers: { "user-agent": "Mozilla/5.0 (compatible; SchoolMenuBot/1.0)" },
+  });
+  if (!res.ok) throw new Error(`Could not download the menu PDF (${res.status})`);
+  const buf = new Uint8Array(await res.arrayBuffer());
+  const doc = await getDocumentProxy(buf);
+  const { text } = await extractText(doc, { mergePages: false });
+  return Array.isArray(text) ? text : [text];
+}
+
+const SYSTEM_PROMPT = `You convert a school meal calendar PDF into JSON.
+The PDF has pages for BREAKFAST, LUNCH and SNACK laid out as a Monday-Friday calendar.
+Each cell starts with the day-of-month number followed by the meal.
+Return ONLY JSON of the shape:
+{"days":[{"day":1,"breakfast":"...","lunch":"...","snack":"..."}]}
+Rules:
+- One entry per day number that appears anywhere in the calendars, sorted ascending.
+- Use null for a meal that has no item that day.
+- Keep the item wording from the PDF, including "Upon Request: ..." alternatives, but strip the leading day number.
+- If a cell says HOLIDAY or NO SCHOOL, use exactly "HOLIDAY" for that meal.`;
+
+async function parseWithAI(pages: string[]): Promise<MenuDay[]> {
+  const apiKey = process.env["LOVABLE_API_KEY"];
+  if (!apiKey) throw new Error("AI is not configured for this project");
+
+  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: "google/gemini-3-flash",
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        {
+          role: "user",
+          content: pages.map((p, i) => `--- PDF PAGE ${i + 1} ---\n${p}`).join("\n\n"),
+        },
+      ],
+      response_format: { type: "json_object" },
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Menu parsing failed [${res.status}]: ${body.slice(0, 300)}`);
+  }
+
+  const data = (await res.json()) as {
+    choices?: { message?: { content?: string } }[];
+  };
+  const content = data.choices?.[0]?.message?.content ?? "{}";
+  const parsed = JSON.parse(content) as { days?: MenuDay[] };
+  const days = (parsed.days ?? [])
+    .filter((d) => Number.isInteger(d.day) && d.day >= 1 && d.day <= 31)
+    .map((d) => ({
+      day: d.day,
+      breakfast: d.breakfast || null,
+      lunch: d.lunch || null,
+      snack: d.snack || null,
+    }))
+    .sort((a, b) => a.day - b.day);
+  return days;
+}
+
+export async function getMonthMenu(month: string, year: number): Promise<MonthMenu> {
+  const key = `${month}-${year}`;
+  const hit = cache.get(key);
+  if (hit && hit.expires > Date.now()) return hit.value;
+
+  const files = await findPreKMenuFiles();
+  const fileId = files[month];
+  if (!fileId) {
+    throw new Error(`SFUSD hasn't posted the Pre-K menu for ${month} yet.`);
+  }
+
+  const pages = await pdfPages(fileId);
+  const days = await parseWithAI(pages);
+
+  const value: MonthMenu = {
+    month,
+    year,
+    sourceUrl: MENUS_PAGE_URL,
+    pdfUrl: `https://drive.google.com/file/d/${fileId}/view`,
+    days,
+  };
+  cache.set(key, { value, expires: Date.now() + TTL_MS });
+  return value;
+}
