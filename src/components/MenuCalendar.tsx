@@ -8,7 +8,7 @@ const MEALS = [
   { key: "snack", label: "S" },
 ] as const;
 
-type Cell = { day: number; entry?: MenuDay } | null;
+type Cell = { day: number; entry: MenuDay | undefined } | null;
 
 /** Monday-Friday calendar grid of the month's meals. */
 export function MenuCalendar({
