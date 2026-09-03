@@ -3,9 +3,9 @@ import type { MenuDay } from "@/lib/menu.functions";
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 
 const MEALS = [
-  { key: "breakfast", label: "B" },
-  { key: "lunch", label: "L" },
-  { key: "snack", label: "S" },
+  { key: "breakfast", label: "B", color: "text-accent" },
+  { key: "lunch", label: "L", color: "text-primary" },
+  { key: "snack", label: "S", color: "text-berry" },
 ] as const;
 
 type Cell = { day: number; entry: MenuDay | undefined } | null;
@@ -17,12 +17,14 @@ export function MenuCalendar({
   month,
   days,
   todayDate,
+  onSelectDay,
 }: {
   monthIndex: number;
   year: number;
   month: string;
   days: MenuDay[];
   todayDate: number | null;
+  onSelectDay?: (day: number) => void;
 }) {
   const byDay = new Map(days.map((d) => [d.day, d]));
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
@@ -59,22 +61,28 @@ export function MenuCalendar({
             const holiday =
               entry?.lunch === "HOLIDAY" || entry?.breakfast === "HOLIDAY";
             const isToday = todayDate === day;
+            const clickable = Boolean(onSelectDay) && Boolean(entry) && !holiday;
             return (
-              <div
+              <button
+                type="button"
                 key={day}
                 aria-label={`${month} ${day}`}
-                className={`min-h-32 rounded-2xl border p-2.5 ${
+                disabled={!clickable}
+                onClick={() => onSelectDay?.(day)}
+                className={`min-h-32 rounded-2xl border p-2.5 text-left transition-transform ${
+                  clickable ? "cursor-pointer hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift)]" : ""
+                } ${
                   isToday
-                    ? "border-accent bg-card shadow-[var(--shadow-lift)]"
+                    ? "border-2 border-primary bg-card shadow-[var(--shadow-lift)]"
                     : holiday
                       ? "border-dashed border-border bg-card/50"
-                      : "border-border bg-card/80"
+                      : "border-border bg-card/90"
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <span className="font-display text-2xl font-bold">{day}</span>
                   {isToday ? (
-                    <span className="rounded-full bg-accent px-2 py-0.5 text-[0.6rem] font-extrabold uppercase tracking-widest text-accent-foreground">
+                    <span className="rounded-full bg-primary px-2 py-0.5 text-[0.6rem] font-extrabold uppercase tracking-widest text-primary-foreground">
                       Today
                     </span>
                   ) : null}
@@ -86,10 +94,10 @@ export function MenuCalendar({
                     {MEALS.map((meal) =>
                       entry[meal.key] ? (
                         <li key={meal.key} className="flex gap-1.5">
-                          <span className="mt-px shrink-0 font-extrabold text-primary">
+                          <span className={`mt-px shrink-0 font-extrabold ${meal.color}`}>
                             {meal.label}
                           </span>
-                          <span>{entry[meal.key]}</span>
+                          <span className="line-clamp-2">{entry[meal.key]}</span>
                         </li>
                       ) : null,
                     )}
@@ -97,13 +105,15 @@ export function MenuCalendar({
                 ) : (
                   <p className="mt-2 text-xs text-muted-foreground">No meals posted</p>
                 )}
-              </div>
+              </button>
             );
           })}
         </div>
       </div>
       <p className="mt-3 text-center text-xs text-muted-foreground">
-        B = Breakfast · L = Lunch · S = Snack
+        <span className="font-extrabold text-accent">B</span> = Breakfast ·{" "}
+        <span className="font-extrabold text-primary">L</span> = Lunch ·{" "}
+        <span className="font-extrabold text-berry">S</span> = Snack — tap a day for details
       </p>
     </div>
   );
