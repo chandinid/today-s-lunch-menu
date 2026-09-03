@@ -267,29 +267,25 @@ function TodayLunchHero({
   const lunch = entry.lunch;
   const holiday = lunch === "HOLIDAY";
   return (
-    <article className="overflow-hidden rounded-3xl border-2 border-primary bg-card shadow-[var(--shadow-lift)]">
-      <div className="bg-primary px-6 py-3 sm:px-8">
-        <span className="text-xs font-extrabold uppercase tracking-[0.22em] text-primary-foreground">
-          Lunch today
-        </span>
-      </div>
-      <div className="p-6 sm:p-8">
-        <p className="font-display text-3xl leading-tight sm:text-4xl">
-          {holiday ? "Holiday — no meals served" : (lunch ?? "Not served today")}
+    <article className="rounded-3xl border-2 border-primary bg-card p-6 shadow-[var(--shadow-lift)] sm:p-8">
+      <span className="inline-block rounded-full bg-primary px-3 py-1 text-xs font-extrabold uppercase tracking-[0.22em] text-primary-foreground">
+        Lunch
+      </span>
+      <p className="mt-4 font-display text-3xl leading-tight sm:text-4xl">
+        {holiday ? "Holiday — no meals served" : (lunch ?? "Not served today")}
+      </p>
+      {pdfUrl ? (
+        <p className="mt-4 text-sm">
+          <a
+            className="font-bold text-primary underline underline-offset-2"
+            href={pdfUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            View the source menu (PDF)
+          </a>
         </p>
-        {pdfUrl ? (
-          <p className="mt-4 text-sm">
-            <a
-              className="font-bold text-primary underline underline-offset-2"
-              href={pdfUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              View the source menu (PDF)
-            </a>
-          </p>
-        ) : null}
-      </div>
+      ) : null}
     </article>
   );
 }
