@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 import { fetchMonthMenu, type MenuDay } from "@/lib/menu.functions";
 import { MenuCalendar } from "@/components/MenuCalendar";
 
