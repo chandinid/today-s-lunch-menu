@@ -162,3 +162,38 @@ export async function getMonthMenu(month: string, year: number): Promise<MonthMe
   cache.set(key, { value, expires: Date.now() + TTL_MS });
   return value;
 }
+
+/**
+ * Pre-warm the cache for the current and next month so the first visitor of a
+ * new month doesn't wait for a PDF download + AI parse. Called by the
+ * /api/public/refresh-menus cron endpoint.
+ *
+ * A failure for one month (e.g. next month's PDF not posted yet) is not fatal —
+ * it just means that month stays cold until SFUSD publishes it.
+ */
+export async function prewarmMenus(): Promise<{ warmed: string[]; skipped: string[] }> {
+  const now = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" }),
+  );
+  const warmed: string[] = [];
+  const skipped: string[] = [];
+
+  const targets: { month: string; year: number }[] = [];
+  for (let offset = 0; offset <= 1; offset += 1) {
+    const d = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+    targets.push({ month: MONTHS[d.getMonth()]!, year: d.getFullYear() });
+  }
+
+  await Promise.all(
+    targets.map(async (t) => {
+      try {
+        await getMonthMenu(t.month, t.year);
+        warmed.push(`${t.month} ${t.year}`);
+      } catch {
+        skipped.push(`${t.month} ${t.year}`);
+      }
+    }),
+  );
+
+  return { warmed, skipped };
+}
