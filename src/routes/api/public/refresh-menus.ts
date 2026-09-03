@@ -13,14 +13,13 @@ import { prewarmMenus } from "@/lib/menu.server";
 export const Route = createFileRoute("/api/public/refresh-menus")({
   server: {
     handlers: {
-      POST: async () => {
+      POST: async ({ request }: { request: Request }) => {
         const expected = process.env["MENU_REFRESH_TOKEN"];
-        // No token configured → allow but warn; with a token configured, require it.
         if (expected) {
-          // The header is validated by the caller; if missing, refuse.
-          // (Request header access differs across runtimes, so we accept the
-          // call when a token is configured only if the platform forwards it.
-          // For a low-traffic internal cron this is acceptable.)
+          const sent = request.headers.get("x-refresh-token");
+          if (!sent || sent !== expected) {
+            return new Response("Unauthorized", { status: 401 });
+          }
         }
         try {
           const result = await prewarmMenus();
