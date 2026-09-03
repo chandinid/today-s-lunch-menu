@@ -326,3 +326,44 @@ function Notice({ title, body }: { title: string; body: string }) {
     </div>
   );
 }
+
+function TodayHero({
+  entry,
+  month,
+  day,
+  pdfUrl,
+}: {
+  entry: MenuDay;
+  month: string;
+  day: number;
+  pdfUrl: string | undefined;
+}) {
+  const lunch = entry.lunch;
+  const holiday = lunch === "HOLIDAY";
+  const mealText = holiday
+    ? "not served — holiday"
+    : (lunch ?? "not served today");
+  return (
+    <div className="rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-card)] sm:p-8">
+      <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-primary">
+        Lunch today
+      </p>
+      <p className="mt-3 font-display text-2xl leading-tight sm:text-3xl">
+        Lunch today for {month} {day} is{" "}
+        <span className="text-primary">{mealText}</span>.
+      </p>
+      {pdfUrl ? (
+        <p className="mt-4 text-sm">
+          <a
+            className="font-bold text-primary underline underline-offset-2"
+            href={pdfUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            View the source menu (PDF)
+          </a>
+        </p>
+      ) : null}
+    </div>
+  );
+}
