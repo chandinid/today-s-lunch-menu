@@ -9,4 +9,5 @@
 - [x] Auto-download & parse next month's LunchMaster PDF as it comes out (no manual refresh) — cron/pre-warm endpoint + adjacent-month prefetch
 - [x] Click a meal in the calendar to show full details (meal wording + "Upon Request" alternatives + source link)
 - [ ] Pull allergens & nutrition from the shared Drive folder, matched to our Pre-K menu items
+- [ ] Change hero heading to "What's on the menu today!"
 - [x] Auto-pick the current month's PDF each month
