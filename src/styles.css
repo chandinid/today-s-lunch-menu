@@ -5,17 +5,12 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Design system definition.
+ * TK Lunch design system — "Berry Pop".
+ * Palette: mint sky, berry red, peach, grape.
+ * Type: Archivo Black (display) + Hind (body).
  *
  * The @theme inline block maps CSS custom properties to Tailwind utility
  * classes (e.g. --color-primary -> bg-primary, text-primary).
- *
- * The :root and .dark blocks define the actual color values using oklch.
- * All colors MUST use oklch format.
- *
- * To add a new semantic color:
- * 1. Add the variable to :root (light value) and .dark (dark value)
- * 2. Register it in @theme inline as --color-<name>: var(--<name>)
  */
 
 @theme inline {
@@ -26,8 +21,8 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
-  --font-display: "Fraunces", Georgia, serif;
-  --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Archivo Black", system-ui, sans-serif;
+  --font-sans: "Hind", ui-sans-serif, system-ui, sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -50,33 +45,33 @@
   --color-ring-offset-background: var(--background);
   --color-berry: var(--berry);
   --color-berry-foreground: var(--berry-foreground);
-  --shadow-card: 0 1px 0 0 var(--border), 0 12px 28px -18px oklch(0.35 0.06 60 / 55%);
-  --shadow-lift: 0 18px 40px -22px oklch(0.35 0.06 60 / 65%);
+  --shadow-card: 0 1px 0 0 var(--border), 0 14px 30px -18px oklch(0.633 0.249 293.7 / 45%);
+  --shadow-lift: 0 22px 46px -22px oklch(0.633 0.249 293.7 / 55%);
 }
 
 :root {
-  --radius: 1rem;
-  --background: oklch(0.975 0.018 92);
-  --foreground: oklch(0.26 0.035 62);
-  --card: oklch(0.995 0.008 95);
-  --card-foreground: oklch(0.26 0.035 62);
-  --popover: oklch(0.995 0.008 95);
-  --popover-foreground: oklch(0.26 0.035 62);
-  --primary: oklch(0.44 0.093 155);
-  --primary-foreground: oklch(0.985 0.012 95);
-  --secondary: oklch(0.93 0.035 92);
-  --secondary-foreground: oklch(0.3 0.04 62);
-  --muted: oklch(0.94 0.024 92);
-  --muted-foreground: oklch(0.52 0.03 70);
-  --accent: oklch(0.74 0.155 58);
-  --accent-foreground: oklch(0.22 0.05 55);
+  --radius: 1.4rem;
+  --background: oklch(0.965 0.045 203);
+  --foreground: oklch(0.3 0.06 293);
+  --card: oklch(0.997 0.006 95);
+  --card-foreground: oklch(0.3 0.06 293);
+  --popover: oklch(0.997 0.006 95);
+  --popover-foreground: oklch(0.3 0.06 293);
+  --primary: oklch(0.590 0.268 18.6);
+  --primary-foreground: oklch(0.99 0.01 95);
+  --secondary: oklch(0.895 0.082 203);
+  --secondary-foreground: oklch(0.3 0.06 293);
+  --muted: oklch(0.93 0.04 203);
+  --muted-foreground: oklch(0.5 0.05 293);
+  --accent: oklch(0.831 0.116 26.8);
+  --accent-foreground: oklch(0.3 0.06 293);
   --destructive: oklch(0.55 0.19 27);
-  --destructive-foreground: oklch(0.985 0.012 95);
-  --berry: oklch(0.55 0.15 12);
-  --berry-foreground: oklch(0.985 0.012 95);
-  --border: oklch(0.89 0.028 88);
-  --input: oklch(0.89 0.028 88);
-  --ring: oklch(0.44 0.093 155);
+  --destructive-foreground: oklch(0.99 0.01 95);
+  --berry: oklch(0.633 0.249 293.7);
+  --berry-foreground: oklch(0.99 0.01 95);
+  --border: oklch(0.86 0.05 203);
+  --input: oklch(0.86 0.05 203);
+  --ring: oklch(0.590 0.268 18.6);
 }
 
 @layer base {
@@ -89,20 +84,18 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     background-image:
-      radial-gradient(
-        circle at 12% -5%,
-        oklch(0.74 0.155 58 / 16%),
-        transparent 45%
-      ),
-      radial-gradient(circle at 92% 0%, oklch(0.44 0.093 155 / 14%), transparent 42%);
+      radial-gradient(circle at 10% -8%, oklch(0.590 0.268 18.6 / 18%), transparent 40%),
+      radial-gradient(circle at 95% -5%, oklch(0.633 0.249 293.7 / 18%), transparent 42%),
+      radial-gradient(circle at 50% 108%, oklch(0.831 0.116 26.8 / 20%), transparent 45%);
     background-repeat: no-repeat;
+    background-attachment: fixed;
   }
 
   h1,
   h2,
   h3 {
     font-family: var(--font-display);
-    font-weight: 600;
+    font-weight: 400;
+    letter-spacing: -0.01em;
   }
 }
-

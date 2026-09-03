@@ -10,33 +10,43 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicRefreshMenusRouteImport } from './routes/api/public/refresh-menus'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicRefreshMenusRoute = ApiPublicRefreshMenusRouteImport.update({
+  id: '/api/public/refresh-menus',
+  path: '/api/public/refresh-menus',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/public/refresh-menus': typeof ApiPublicRefreshMenusRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/public/refresh-menus': typeof ApiPublicRefreshMenusRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/public/refresh-menus': typeof ApiPublicRefreshMenusRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/api/public/refresh-menus'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/api/public/refresh-menus'
+  id: '__root__' | '/' | '/api/public/refresh-menus'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiPublicRefreshMenusRoute: typeof ApiPublicRefreshMenusRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +58,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/refresh-menus': {
+      id: '/api/public/refresh-menus'
+      path: '/api/public/refresh-menus'
+      fullPath: '/api/public/refresh-menus'
+      preLoaderRoute: typeof ApiPublicRefreshMenusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiPublicRefreshMenusRoute: ApiPublicRefreshMenusRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
