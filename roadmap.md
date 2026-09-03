@@ -8,4 +8,5 @@
 - [ ] Remove the "Lunch today" hero box; make the date above "What's for lunch?" bigger
 - [ ] Auto-download & parse next month's LunchMaster PDF as it comes out (no manual refresh) — cron/pre-warm endpoint
 - [ ] Click a meal in the calendar to show full details (meal wording + "Upon Request" alternatives + source link)
+- [ ] Pull allergens & nutrition from the shared Drive folder, matched to our Pre-K menu items
 - [x] Auto-pick the current month's PDF each month
