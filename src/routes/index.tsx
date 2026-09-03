@@ -102,24 +102,32 @@ function Index() {
         ) : data && !data.ok ? (
           <Notice title="Menu unavailable" body={data.error} />
         ) : todayEntry ? (
-          <div className="grid gap-4 sm:grid-cols-3">
-            {MEALS.map((meal) => (
-              <article
-                key={meal.key}
-                className="rounded-3xl border border-border bg-card p-5 shadow-[var(--shadow-card)]"
-              >
-                <div className="flex items-center gap-2">
-                  <span aria-hidden className="h-2 w-2 rounded-full bg-accent" />
-                  <h2 className="text-sm font-bold uppercase tracking-widest text-primary">
-                    {meal.label}
-                  </h2>
-                </div>
-                <p className="mt-3 font-display text-xl leading-snug">
-                  {todayEntry[meal.key] ?? "Not served today"}
-                </p>
-              </article>
-            ))}
-          </div>
+          <>
+            <TodayHero
+              entry={todayEntry}
+              month={month}
+              day={today.getDate()}
+              pdfUrl={data.ok ? data.menu.pdfUrl : undefined}
+            />
+            <div className="mt-4 grid gap-4 sm:grid-cols-3">
+              {MEALS.map((meal) => (
+                <article
+                  key={meal.key}
+                  className="rounded-3xl border border-border bg-card p-5 shadow-[var(--shadow-card)]"
+                >
+                  <div className="flex items-center gap-2">
+                    <span aria-hidden className="h-2 w-2 rounded-full bg-accent" />
+                    <h2 className="text-sm font-bold uppercase tracking-widest text-primary">
+                      {meal.label}
+                    </h2>
+                  </div>
+                  <p className="mt-3 font-display text-xl leading-snug">
+                    {todayEntry[meal.key] ?? "Not served today"}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </>
         ) : (
           <Notice
             title={isCurrentMonth ? "No meals today" : `Browsing ${month}`}
