@@ -72,7 +72,7 @@ export function MenuCalendar({
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-display text-base font-bold">{day}</span>
+                  <span className="font-display text-2xl font-bold">{day}</span>
                   {isToday ? (
                     <span className="rounded-full bg-accent px-2 py-0.5 text-[0.6rem] font-extrabold uppercase tracking-widest text-accent-foreground">
                       Today

@@ -102,24 +102,32 @@ function Index() {
         ) : data && !data.ok ? (
           <Notice title="Menu unavailable" body={data.error} />
         ) : todayEntry ? (
-          <div className="grid gap-4 sm:grid-cols-3">
-            {MEALS.map((meal) => (
-              <article
-                key={meal.key}
-                className="rounded-3xl border border-border bg-card p-5 shadow-[var(--shadow-card)]"
-              >
-                <div className="flex items-center gap-2">
-                  <span aria-hidden className="h-2 w-2 rounded-full bg-accent" />
-                  <h2 className="text-sm font-bold uppercase tracking-widest text-primary">
-                    {meal.label}
-                  </h2>
-                </div>
-                <p className="mt-3 font-display text-xl leading-snug">
-                  {todayEntry[meal.key] ?? "Not served today"}
-                </p>
-              </article>
-            ))}
-          </div>
+          <>
+            <TodayHero
+              entry={todayEntry}
+              month={month}
+              day={today.getDate()}
+              pdfUrl={data?.ok ? data.menu.pdfUrl : undefined}
+            />
+            <div className="mt-4 grid gap-4 sm:grid-cols-3">
+              {MEALS.map((meal) => (
+                <article
+                  key={meal.key}
+                  className="rounded-3xl border border-border bg-card p-5 shadow-[var(--shadow-card)]"
+                >
+                  <div className="flex items-center gap-2">
+                    <span aria-hidden className="h-2 w-2 rounded-full bg-accent" />
+                    <h2 className="text-sm font-bold uppercase tracking-widest text-primary">
+                      {meal.label}
+                    </h2>
+                  </div>
+                  <p className="mt-3 font-display text-xl leading-snug">
+                    {todayEntry[meal.key] ?? "Not served today"}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </>
         ) : (
           <Notice
             title={isCurrentMonth ? "No meals today" : `Browsing ${month}`}
@@ -315,6 +323,47 @@ function Notice({ title, body }: { title: string; body: string }) {
     <div className="rounded-3xl border border-dashed border-border bg-card/70 p-6 text-center">
       <h2 className="text-xl">{title}</h2>
       <p className="mt-2 text-sm text-muted-foreground">{body}</p>
+    </div>
+  );
+}
+
+function TodayHero({
+  entry,
+  month,
+  day,
+  pdfUrl,
+}: {
+  entry: MenuDay;
+  month: string;
+  day: number;
+  pdfUrl: string | undefined;
+}) {
+  const lunch = entry.lunch;
+  const holiday = lunch === "HOLIDAY";
+  const mealText = holiday
+    ? "not served — holiday"
+    : (lunch ?? "not served today");
+  return (
+    <div className="rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-card)] sm:p-8">
+      <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-primary">
+        Lunch today
+      </p>
+      <p className="mt-3 font-display text-2xl leading-tight sm:text-3xl">
+        Lunch today for {month} {day} is{" "}
+        <span className="text-primary">{mealText}</span>.
+      </p>
+      {pdfUrl ? (
+        <p className="mt-4 text-sm">
+          <a
+            className="font-bold text-primary underline underline-offset-2"
+            href={pdfUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            View the source menu (PDF)
+          </a>
+        </p>
+      ) : null}
     </div>
   );
 }
