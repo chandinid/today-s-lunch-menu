@@ -180,14 +180,27 @@ function Index() {
             </div>
             <NavButton
               label="Previous month"
-              onClick={() => setMonthIndex((i) => (i + 11) % 12)}
+              onClick={() =>
+                setCursor((c) => ({
+                  month: c.month === 0 ? 11 : c.month - 1,
+                  year: c.month === 0 ? c.year - 1 : c.year,
+                }))
+              }
             >
               ‹
             </NavButton>
             <span className="min-w-28 text-center text-sm font-bold">
               {month} {year}
             </span>
-            <NavButton label="Next month" onClick={() => setMonthIndex((i) => (i + 1) % 12)}>
+            <NavButton
+              label="Next month"
+              onClick={() =>
+                setCursor((c) => ({
+                  month: c.month === 11 ? 0 : c.month + 1,
+                  year: c.month === 11 ? c.year + 1 : c.year,
+                }))
+              }
+            >
               ›
             </NavButton>
           </div>
@@ -205,7 +218,7 @@ function Index() {
         ) : view === "calendar" ? (
           <div className="mt-5">
             <MenuCalendar
-              monthIndex={monthIndex}
+              monthIndex={cursor.month}
               year={year}
               month={month}
               days={days}
