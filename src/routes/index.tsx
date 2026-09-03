@@ -59,15 +59,35 @@ function Index() {
   const [monthIndex, setMonthIndex] = useState(today.getMonth());
   const [view, setView] = useState<"calendar" | "list">("calendar");
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  const year = today.getFullYear();
-  const month = MONTHS[monthIndex]!;
-  const isCurrentMonth = monthIndex === today.getMonth();
+  const [cursor, setCursor] = useState({ month: today.getMonth(), year: today.getFullYear() });
+  const year = cursor.year;
+  const month = MONTHS[cursor.month]!;
+  const isCurrentMonth =
+    cursor.month === today.getMonth() && cursor.year === today.getFullYear();
 
   const { data, isPending } = useQuery({
     queryKey: ["menu", month, year],
     queryFn: () => fetchMonthMenu({ data: { month, year } }),
     staleTime: 1000 * 60 * 30,
   });
+
+  // Prefetch adjacent months so the prev/next arrows feel instant.
+  const queryClient = useQueryClient();
+  const adjacent = [
+    { month: cursor.month === 0 ? 11 : cursor.month - 1, year: cursor.month === 0 ? cursor.year - 1 : cursor.year },
+    { month: cursor.month === 11 ? 0 : cursor.month + 1, year: cursor.month === 11 ? cursor.year + 1 : cursor.year },
+  ];
+  useEffect(() => {
+    for (const a of adjacent) {
+      const am = MONTHS[a.month]!;
+      queryClient.prefetchQuery({
+        queryKey: ["menu", am, a.year],
+        queryFn: () => fetchMonthMenu({ data: { month: am, year: a.year } }),
+        staleTime: 1000 * 60 * 30,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cursor.month, cursor.year]);
 
   const days = data?.ok ? data.menu.days : [];
   const todayEntry = isCurrentMonth
