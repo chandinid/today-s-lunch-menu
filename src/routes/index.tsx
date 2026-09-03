@@ -84,7 +84,7 @@ function Index() {
         <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-primary">
           SFUSD Pre-K · LunchMaster
         </p>
-        <p className="mt-2 font-display text-2xl leading-tight text-foreground sm:text-3xl">
+        <p className="mt-2 font-display text-3xl leading-tight text-foreground sm:text-4xl">
           {today.toLocaleDateString("en-US", {
             weekday: "long",
             month: "long",
