@@ -107,7 +107,7 @@ function Index() {
               entry={todayEntry}
               month={month}
               day={today.getDate()}
-              pdfUrl={data.ok ? data.menu.pdfUrl : undefined}
+              pdfUrl={data?.ok ? data.menu.pdfUrl : undefined}
             />
             <div className="mt-4 grid gap-4 sm:grid-cols-3">
               {MEALS.map((meal) => (
