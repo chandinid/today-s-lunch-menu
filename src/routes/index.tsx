@@ -56,7 +56,6 @@ function sfToday() {
 
 function Index() {
   const today = useMemo(sfToday, []);
-  const [monthIndex, setMonthIndex] = useState(today.getMonth());
   const [view, setView] = useState<"calendar" | "list">("calendar");
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [cursor, setCursor] = useState({ month: today.getMonth(), year: today.getFullYear() });
