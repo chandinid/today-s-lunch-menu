@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { fetchMonthMenu, type MenuDay } from "@/lib/menu.functions";
 import { splitMealText } from "@/lib/meal-text";
 import { DayDetailModal, LEAF } from "@/components/DayDetailModal";
@@ -100,9 +100,31 @@ export function DayCarousel({ today }: { today: Date }) {
   const selectedMenu = menuFor(selected);
   const isToday = sameDay(selected, atMidnight(today));
 
+  // Swipe support for mobile: drag left/right anywhere on the carousel to page days,
+  // same as tapping the arrows or a peeking side card.
+  const touchStartX = useRef<number | null>(null);
+  const SWIPE_THRESHOLD_PX = 40;
+
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0]?.clientX ?? null;
+  }
+  function handleTouchEnd(e: React.TouchEvent) {
+    const startX = touchStartX.current;
+    touchStartX.current = null;
+    if (startX == null) return;
+    const endX = e.changedTouches[0]?.clientX ?? startX;
+    const delta = endX - startX;
+    if (delta > SWIPE_THRESHOLD_PX) setSelected(prevDate);
+    else if (delta < -SWIPE_THRESHOLD_PX) setSelected(nextDate);
+  }
+
   return (
     <section>
-      <div className="relative flex h-80 items-center justify-center sm:h-72">
+      <div
+        className="relative flex h-[26rem] touch-pan-y items-center justify-center sm:h-96"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         <CarouselArrow label="Previous day" side="left" onClick={() => setSelected(prevDate)} />
 
         <DayFrame
@@ -211,30 +233,30 @@ function DayFrame({
     <button
       type="button"
       onClick={onClick}
-      className={`absolute w-56 shrink-0 rounded-[1.25rem] border-[6px] border-white bg-white p-3 text-left shadow-[var(--shadow-lift)] transition-transform duration-200 sm:w-60 ${positioning} ${
+      className={`absolute w-64 shrink-0 rounded-[1.25rem] border-[6px] border-white bg-white p-3.5 text-left shadow-[var(--shadow-lift)] transition-transform duration-200 sm:w-72 ${positioning} ${
         layer === "front" ? "cursor-pointer hover:-translate-y-1" : "cursor-pointer"
       }`}
     >
-      <div className={`rounded-2xl p-3 ${todayFlag ? "bg-secondary/70" : "bg-background"}`}>
+      <div className={`rounded-2xl p-3.5 ${todayFlag ? "bg-secondary/70" : "bg-background"}`}>
         <div className="flex items-baseline justify-between gap-2">
-          <span className="text-xs font-extrabold uppercase tracking-widest text-muted-foreground">
+          <span className="text-sm font-extrabold uppercase tracking-widest text-muted-foreground">
             {date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
           </span>
           {todayFlag ? (
-            <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[0.6rem] font-extrabold uppercase tracking-widest text-primary-foreground">
+            <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[0.65rem] font-extrabold uppercase tracking-widest text-primary-foreground">
               Today
             </span>
           ) : null}
         </div>
 
-        <div className="mt-2 space-y-2">
+        <div className="mt-2.5 space-y-2.5">
           {pending ? (
             <>
-              <div className="h-10 animate-pulse rounded-xl bg-secondary/50" />
-              <div className="h-8 animate-pulse rounded-xl bg-secondary/40" />
+              <div className="h-11 animate-pulse rounded-xl bg-secondary/50" />
+              <div className="h-9 animate-pulse rounded-xl bg-secondary/40" />
             </>
           ) : holiday ? (
-            <p className="text-xs font-bold text-berry">Holiday — no meals</p>
+            <p className="text-sm font-bold text-berry">Holiday — no meals</p>
           ) : entry ? (
             MEAL_ORDER.map((meal) => {
               const value = entry[meal.key];
@@ -244,17 +266,17 @@ function DayFrame({
               return (
                 <div key={meal.key}>
                   <span
-                    className={`inline-block rounded-full px-2 py-0.5 text-[0.6rem] font-extrabold uppercase tracking-widest ${meal.chip}`}
+                    className={`inline-block rounded-full px-2 py-0.5 text-[0.65rem] font-extrabold uppercase tracking-widest ${meal.chip}`}
                   >
                     {meal.label}
                   </span>
-                  <p className="mt-1 flex items-start gap-1 text-sm leading-snug">
+                  <p className="mt-1 flex items-start gap-1 text-base leading-snug">
                     {vegetarianMain ? <span aria-hidden="true">{LEAF}</span> : null}
                     <span className="line-clamp-2">{main}</span>
                   </p>
                   {alt ? (
-                    <p className="mt-0.5 flex items-start gap-1 rounded-md bg-secondary/70 px-1.5 py-0.5 text-[0.7rem] font-bold text-foreground">
-                      <span className="shrink-0 text-[0.6rem] font-extrabold uppercase text-muted-foreground">
+                    <p className="mt-0.5 flex items-start gap-1 rounded-md bg-secondary/70 px-1.5 py-0.5 text-xs font-bold text-foreground">
+                      <span className="shrink-0 text-[0.65rem] font-extrabold uppercase text-muted-foreground">
                         UP:
                       </span>
                       <span className="line-clamp-1">{alt}</span>
@@ -264,7 +286,7 @@ function DayFrame({
               );
             })
           ) : (
-            <p className="text-xs text-muted-foreground">No meal posted</p>
+            <p className="text-sm text-muted-foreground">No meal posted</p>
           )}
         </div>
       </div>
