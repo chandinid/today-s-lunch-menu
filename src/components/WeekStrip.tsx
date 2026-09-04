@@ -20,13 +20,36 @@ const MONTHS = [
 ];
 
 const STALE_MS = 1000 * 60 * 30;
+const CARD_COUNT = 7;
 
-function mondayOf(date: Date): Date {
+function isWeekday(d: Date): boolean {
+  const wd = d.getDay();
+  return wd !== 0 && wd !== 6;
+}
+
+function atMidnight(date: Date): Date {
   const d = new Date(date);
-  const sinceMonday = (d.getDay() + 6) % 7; // Mon = 0 .. Sun = 6
-  d.setDate(d.getDate() - sinceMonday);
   d.setHours(0, 0, 0, 0);
   return d;
+}
+
+function nextWeekday(from: Date, direction: 1 | -1): Date {
+  const d = new Date(from);
+  do {
+    d.setDate(d.getDate() + direction);
+  } while (!isWeekday(d));
+  return d;
+}
+
+/** `count` school-week days (Mon-Fri), starting at `anchor` itself (bumped forward to the next
+ * weekday if `anchor` lands on a weekend) and continuing through the following weekdays. */
+function weekdaysFrom(anchor: Date, count: number): Date[] {
+  const start = isWeekday(anchor) ? atMidnight(anchor) : nextWeekday(atMidnight(anchor), 1);
+  const dates = [start];
+  while (dates.length < count) {
+    dates.push(nextWeekday(dates[dates.length - 1]!, 1));
+  }
+  return dates;
 }
 
 function sameDay(a: Date, b: Date): boolean {
@@ -37,26 +60,18 @@ function sameDay(a: Date, b: Date): boolean {
   );
 }
 
-/** A week of day-cards ("Mon 1", "Tue 2", …) with today highlighted, that you can page
- * week-by-week — a quick-planning strip that sits above the full month view. A week
- * occasionally spans two months (e.g. the last two days of August into September), so this
- * fetches whichever month(s) the visible week actually touches. */
+/** A carousel of school-day cards: today is the first card by default, followed by the next
+ * school days, with arrows to page a day at a time in either direction — a quick-planning strip
+ * above the full month view. The 7-day window occasionally spans two months, so this fetches
+ * whichever month(s) it actually touches. */
 export function WeekStrip({ today }: { today: Date }) {
-  const [weekStart, setWeekStart] = useState(() => mondayOf(today));
+  const [anchor, setAnchor] = useState(() => atMidnight(today));
   const [selected, setSelected] = useState<{ date: Date; entry: MenuDay } | null>(null);
 
-  const weekDates = useMemo(
-    () =>
-      Array.from({ length: 5 }, (_, i) => {
-        const d = new Date(weekStart);
-        d.setDate(d.getDate() + i);
-        return d;
-      }),
-    [weekStart],
-  );
+  const weekDates = useMemo(() => weekdaysFrom(anchor, CARD_COUNT), [anchor]);
 
   const first = weekDates[0]!;
-  const last = weekDates[4]!;
+  const last = weekDates[weekDates.length - 1]!;
   const monthA = { month: MONTHS[first.getMonth()]!, year: first.getFullYear() };
   const monthB = { month: MONTHS[last.getMonth()]!, year: last.getFullYear() };
   const spansTwoMonths = monthA.month !== monthB.month || monthA.year !== monthB.year;
@@ -85,7 +100,7 @@ export function WeekStrip({ today }: { today: Date }) {
     };
   }
 
-  const isCurrentWeek = sameDay(weekStart, mondayOf(today));
+  const startsToday = sameDay(first, atMidnight(today));
 
   return (
     <section>
@@ -94,10 +109,10 @@ export function WeekStrip({ today }: { today: Date }) {
           This week
         </h2>
         <div className="flex items-center gap-1.5">
-          {!isCurrentWeek ? (
+          {!startsToday ? (
             <button
               type="button"
-              onClick={() => setWeekStart(mondayOf(today))}
+              onClick={() => setAnchor(atMidnight(today))}
               className="rounded-full border border-border bg-card px-3 py-1 text-xs font-extrabold uppercase tracking-widest text-primary hover:bg-secondary"
             >
               Today
@@ -105,20 +120,16 @@ export function WeekStrip({ today }: { today: Date }) {
           ) : null}
           <button
             type="button"
-            aria-label="Previous week"
-            onClick={() =>
-              setWeekStart((w) => new Date(w.getFullYear(), w.getMonth(), w.getDate() - 7))
-            }
+            aria-label="Earlier"
+            onClick={() => setAnchor((a) => nextWeekday(a, -1))}
             className="flex size-8 items-center justify-center rounded-full border border-border bg-card text-lg font-bold text-primary hover:bg-secondary"
           >
             ‹
           </button>
           <button
             type="button"
-            aria-label="Next week"
-            onClick={() =>
-              setWeekStart((w) => new Date(w.getFullYear(), w.getMonth(), w.getDate() + 7))
-            }
+            aria-label="Later"
+            onClick={() => setAnchor((a) => nextWeekday(a, 1))}
             className="flex size-8 items-center justify-center rounded-full border border-border bg-card text-lg font-bold text-primary hover:bg-secondary"
           >
             ›
@@ -126,7 +137,7 @@ export function WeekStrip({ today }: { today: Date }) {
         </div>
       </div>
 
-      <div className="mt-3 -mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-2 sm:mx-0 sm:grid sm:grid-cols-5 sm:gap-3 sm:overflow-visible sm:px-0">
+      <div className="mt-3 -mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-2">
         {weekDates.map((date) => {
           const { pending, entry } = menuFor(date);
           const holiday = entry?.lunch === "HOLIDAY" || entry?.breakfast === "HOLIDAY";
@@ -142,7 +153,7 @@ export function WeekStrip({ today }: { today: Date }) {
               type="button"
               disabled={!clickable}
               onClick={() => entry && setSelected({ date, entry })}
-              className={`w-[72vw] max-w-64 shrink-0 snap-start rounded-3xl border p-4 text-left transition-transform sm:w-auto sm:max-w-none ${
+              className={`w-[72vw] max-w-64 shrink-0 snap-start rounded-3xl border p-4 text-left transition-transform ${
                 clickable
                   ? "cursor-pointer hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift)]"
                   : ""

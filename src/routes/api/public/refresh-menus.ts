@@ -2,11 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { prewarmMenus } from "@/lib/menu.server";
 
 /**
- * Cron endpoint: pre-fetch & parse the current and next month's Pre-K menu so
- * visitors never wait on a cold PDF parse. Call once daily (e.g. via an
- * external scheduler or pg_cron) against the stable preview/published URL:
- *
- *   POST https://<project>--<id>.lovable.app/api/public/refresh-menus
+ * Manual/backup trigger for the same pre-warm that Netlify's scheduled function
+ * (netlify/functions/refresh-menus-cron.mts) now runs automatically every 4 hours.
+ * Useful right after SFUSD posts a new month's PDF, if you don't want to wait for the
+ * next scheduled run: POST https://sfusdmenu.com/api/public/refresh-menus
  *
  * A shared secret is expected in the X-Refresh-Token header to prevent abuse.
  */
@@ -32,13 +31,10 @@ export const Route = createFileRoute("/api/public/refresh-menus")({
             { headers: { "Content-Type": "application/json" } },
           );
         } catch (error) {
-          return new Response(
-            JSON.stringify({ ok: false, error: String(error) }),
-            {
-              status: 500,
-              headers: { "Content-Type": "application/json" },
-            },
-          );
+          return new Response(JSON.stringify({ ok: false, error: String(error) }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          });
         }
       },
     },

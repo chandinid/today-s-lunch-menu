@@ -1,4 +1,5 @@
 import { extractText, getDocumentProxy } from "unpdf";
+import { getStore } from "@netlify/blobs";
 import { getAllergenIndex, matchAllergens, matchVegetarian } from "./allergens.server";
 import { callClaudeForJson } from "./claude.server";
 
@@ -46,8 +47,46 @@ export type MonthMenu = {
 };
 
 type CacheEntry = { value: MonthMenu; expires: number };
+// A plain in-memory Map only lives as long as one serverless function instance — on Netlify that
+// instance is thrown away on every cold start (which happens often for a low-traffic site, and
+// on every new deploy), so relying on it alone meant most visits re-downloaded the PDF and re-ran
+// the AI parse from scratch, which is slow enough to read as "no data" while it's in flight. It's
+// kept here only as a same-instance fast path; Netlify Blobs (below) is the real persistent cache
+// shared across every instance and across cold starts.
 const cache = new Map<string, CacheEntry>();
 const TTL_MS = 1000 * 60 * 60 * 6;
+
+/** Netlify Blobs auto-configures itself from the deploy's runtime context, which is only present
+ * when this actually runs as a deployed Netlify Function — not in local dev. Fall back to
+ * memory-only caching there instead of failing. */
+function blobStore() {
+  try {
+    return getStore({ name: "menu-cache", consistency: "strong" });
+  } catch {
+    return null;
+  }
+}
+
+async function readPersistedCache(key: string): Promise<CacheEntry | null> {
+  const store = blobStore();
+  if (!store) return null;
+  try {
+    return await store.get(key, { type: "json" });
+  } catch (error) {
+    console.error("Netlify Blobs read failed", error);
+    return null;
+  }
+}
+
+async function writePersistedCache(key: string, entry: CacheEntry): Promise<void> {
+  const store = blobStore();
+  if (!store) return;
+  try {
+    await store.setJSON(key, entry);
+  } catch (error) {
+    console.error("Netlify Blobs write failed", error);
+  }
+}
 
 /** Scrape the SFUSD menus page for the "LunchMaster PreK" Drive file per month. */
 export async function findPreKMenuFiles(): Promise<Record<string, string>> {
@@ -114,7 +153,12 @@ async function parseWithAI(pages: string[]): Promise<MenuDay[]> {
     SYSTEM_PROMPT,
     pages.map((p, i) => `--- PDF PAGE ${i + 1} ---\n${p}`).join("\n\n"),
   )) as {
-    days?: { day: number; breakfast?: string | null; lunch?: string | null; snack?: string | null }[];
+    days?: {
+      day: number;
+      breakfast?: string | null;
+      lunch?: string | null;
+      snack?: string | null;
+    }[];
   };
   const days = (parsed.days ?? [])
     .filter((d) => Number.isInteger(d.day) && d.day >= 1 && d.day <= 31)
@@ -134,8 +178,14 @@ async function parseWithAI(pages: string[]): Promise<MenuDay[]> {
 
 export async function getMonthMenu(month: string, year: number): Promise<MonthMenu> {
   const key = `${month}-${year}`;
-  const hit = cache.get(key);
-  if (hit && hit.expires > Date.now()) return hit.value;
+  const memHit = cache.get(key);
+  if (memHit && memHit.expires > Date.now()) return memHit.value;
+
+  const persistedHit = await readPersistedCache(key);
+  if (persistedHit && persistedHit.expires > Date.now()) {
+    cache.set(key, persistedHit);
+    return persistedHit.value;
+  }
 
   const files = await findPreKMenuFiles();
   const fileId = files[month];
@@ -166,7 +216,9 @@ export async function getMonthMenu(month: string, year: number): Promise<MonthMe
     pdfUrl: `https://drive.google.com/file/d/${fileId}/view`,
     days,
   };
-  cache.set(key, { value, expires: Date.now() + TTL_MS });
+  const entry: CacheEntry = { value, expires: Date.now() + TTL_MS };
+  cache.set(key, entry);
+  await writePersistedCache(key, entry);
   return value;
 }
 
@@ -179,9 +231,7 @@ export async function getMonthMenu(month: string, year: number): Promise<MonthMe
  * it just means that month stays cold until SFUSD publishes it.
  */
 export async function prewarmMenus(): Promise<{ warmed: string[]; skipped: string[] }> {
-  const now = new Date(
-    new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" }),
-  );
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
   const warmed: string[] = [];
   const skipped: string[] = [];
 
