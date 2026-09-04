@@ -9,18 +9,21 @@ export const MEALS = [
     allergensKey: "breakfastAllergens",
     label: "Breakfast",
     chip: "bg-accent text-accent-foreground",
+    tilt: "rotate-2",
   },
   {
     key: "lunch",
     allergensKey: "lunchAllergens",
     label: "Lunch",
     chip: "bg-primary text-primary-foreground",
+    tilt: "-rotate-2",
   },
   {
     key: "snack",
     allergensKey: "snackAllergens",
     label: "Snack",
     chip: "bg-berry text-berry-foreground",
+    tilt: "-rotate-1",
   },
 ] as const;
 
@@ -79,7 +82,7 @@ export function DayDetailModal({
                 <div key={meal.key}>
                   <dt className="flex items-center gap-2">
                     <span
-                      className={`rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-widest ${meal.chip}`}
+                      className={`rounded-md border-2 border-white px-3 py-1 text-xs font-extrabold uppercase tracking-widest shadow-sm ${meal.chip} ${meal.tilt}`}
                     >
                       {meal.label}
                     </span>
@@ -111,7 +114,7 @@ export function DayDetailModal({
                       {allergens.map((a) => (
                         <span
                           key={a}
-                          className="rounded-full border border-border bg-secondary px-2 py-0.5 font-bold text-foreground"
+                          className="rounded-md border border-border bg-secondary px-2 py-0.5 font-bold text-foreground"
                         >
                           {a}
                         </span>

@@ -150,7 +150,7 @@ function CalendarCell({
           <span className="font-display text-2xl font-bold">{day}</span>
         </span>
         {isToday ? (
-          <span className="rounded-full bg-primary px-2 py-0.5 text-[0.6rem] font-extrabold uppercase tracking-widest text-primary-foreground">
+          <span className="-rotate-3 rounded-md border-2 border-white bg-primary px-2 py-0.5 text-[0.6rem] font-extrabold uppercase tracking-widest text-primary-foreground shadow-sm">
             Today
           </span>
         ) : null}

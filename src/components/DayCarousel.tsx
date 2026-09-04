@@ -21,11 +21,17 @@ const MONTHS = [
 
 const STALE_MS = 1000 * 60 * 30;
 
-// Lunch first — it's the thing this app is for — then breakfast, then snack.
+// Lunch first — it's the thing this app is for — then breakfast, then snack. Each chip gets a
+// slight, fixed tilt so the row reads as hand-placed stickers rather than a uniform pill row.
 const MEAL_ORDER = [
-  { key: "lunch", label: "Lunch", chip: "bg-primary text-primary-foreground" },
-  { key: "breakfast", label: "Breakfast", chip: "bg-accent text-accent-foreground" },
-  { key: "snack", label: "Snack", chip: "bg-berry text-berry-foreground" },
+  { key: "lunch", label: "Lunch", chip: "bg-primary text-primary-foreground", tilt: "-rotate-2" },
+  {
+    key: "breakfast",
+    label: "Breakfast",
+    chip: "bg-accent text-accent-foreground",
+    tilt: "rotate-2",
+  },
+  { key: "snack", label: "Snack", chip: "bg-berry text-berry-foreground", tilt: "-rotate-1" },
 ] as const;
 
 function isWeekday(d: Date): boolean {
@@ -243,7 +249,7 @@ function DayFrame({
             {date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
           </span>
           {todayFlag ? (
-            <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[0.65rem] font-extrabold uppercase tracking-widest text-primary-foreground">
+            <span className="shrink-0 -rotate-3 rounded-md border-2 border-white bg-primary px-2 py-0.5 text-[0.65rem] font-extrabold uppercase tracking-widest text-primary-foreground shadow-sm">
               Today
             </span>
           ) : null}
@@ -266,7 +272,7 @@ function DayFrame({
               return (
                 <div key={meal.key}>
                   <span
-                    className={`inline-block rounded-full px-2 py-0.5 text-[0.65rem] font-extrabold uppercase tracking-widest ${meal.chip}`}
+                    className={`inline-block rounded-md border-2 border-white px-2 py-0.5 text-[0.65rem] font-extrabold uppercase tracking-widest shadow-sm ${meal.chip} ${meal.tilt}`}
                   >
                     {meal.label}
                   </span>

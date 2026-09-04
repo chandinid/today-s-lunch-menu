@@ -104,29 +104,58 @@ function Index() {
 
   return (
     <main className="mx-auto w-full max-w-4xl px-5 pb-20 pt-10 sm:pt-16">
-      <header className="text-center">
-        <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-primary">
-          SFUSD Pre-K · LunchMaster
-        </p>
-        <h1 className="mt-2 text-4xl leading-tight sm:text-5xl">What&rsquo;s on the menu today!</h1>
-      </header>
+      <div className="doodle-bg relative rounded-[2.5rem] bg-secondary/40 px-5 pb-12 pt-8 sm:px-10 sm:pt-10">
+        <header className="text-center">
+          <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-primary">
+            SFUSD Pre-K · LunchMaster
+          </p>
+          <h1 className="mt-2 text-4xl leading-tight sm:text-5xl">
+            What&rsquo;s on the menu today!
+          </h1>
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 220 14"
+            className="mx-auto mt-1.5 h-3 w-40 text-primary sm:w-52"
+          >
+            <path
+              d="M2 8c8-8 16 6 24-2s16 6 24-2 16 6 24-2 16 6 24-2 16 6 24-2 16 6 24-2 16 6 24-2"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+            />
+          </svg>
+        </header>
 
-      <section className="mt-8">
-        <DayCarousel today={today} />
-      </section>
+        <section className="mt-8">
+          <DayCarousel today={today} />
+        </section>
+
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 400 24"
+          preserveAspectRatio="none"
+          className="absolute -bottom-3 left-0 h-6 w-full text-secondary/40"
+        >
+          <path
+            fill="currentColor"
+            d="M0,12 C12.5,0 37.5,24 50,12 C62.5,0 87.5,24 100,12 C112.5,0 137.5,24 150,12 C162.5,0 187.5,24 200,12 C212.5,0 237.5,24 250,12 C262.5,0 287.5,24 300,12 C312.5,0 337.5,24 350,12 C362.5,0 387.5,24 400,12 L400,24 L0,24 Z"
+          />
+        </svg>
+      </div>
 
       <section className="mt-12">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-2xl">The whole month</h2>
           <div className="flex items-center gap-2">
-            <div className="mr-1 flex rounded-full border border-border bg-card p-1">
+            <div className="mr-1 flex rounded-xl border-2 border-border bg-card p-1">
               {(["calendar", "list"] as const).map((v) => (
                 <button
                   key={v}
                   type="button"
                   onClick={() => setView(v)}
                   aria-pressed={view === v}
-                  className={`rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-widest transition-colors ${
+                  className={`rounded-lg px-3 py-1 text-xs font-extrabold uppercase tracking-widest transition-colors ${
                     view === v
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:text-primary"
@@ -289,7 +318,7 @@ function DayCard({
           {month} {entry.day}
         </h3>
         {isToday ? (
-          <span className="rounded-full bg-primary px-2.5 py-1 text-[0.65rem] font-extrabold uppercase tracking-widest text-primary-foreground">
+          <span className="-rotate-3 rounded-md border-2 border-white bg-primary px-2.5 py-1 text-[0.65rem] font-extrabold uppercase tracking-widest text-primary-foreground shadow-sm">
             Today
           </span>
         ) : null}
