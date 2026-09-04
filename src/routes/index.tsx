@@ -108,7 +108,7 @@ function Index() {
       <ThemeToggle />
 
       <header className="reveal text-center">
-        <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-primary">
+        <p className="text-sm font-extrabold uppercase tracking-[0.22em] text-primary sm:text-base">
           SFUSD Pre-K · LunchMaster
         </p>
         <h1 className="mt-2 text-4xl leading-tight sm:text-5xl">What&rsquo;s on the menu today!</h1>
