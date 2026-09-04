@@ -80,13 +80,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "Pre-K Lunch Menu | SFUSD" },
       {
         name: "description",
-        content: "Today's SFUSD Pre-K breakfast, lunch, and snack, read from the monthly LunchMaster menu.",
+        content:
+          "Today's SFUSD Pre-K breakfast, lunch, and snack, read from the monthly LunchMaster menu.",
       },
       { name: "author", content: "SFUSD Pre-K Menu" },
       { property: "og:title", content: "Pre-K Lunch Menu | SFUSD" },
       {
         property: "og:description",
-        content: "Today's SFUSD Pre-K breakfast, lunch, and snack, read from the monthly LunchMaster menu.",
+        content:
+          "Today's SFUSD Pre-K breakfast, lunch, and snack, read from the monthly LunchMaster menu.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -102,9 +104,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Archivo+Black&family=Hind:wght@400;500;600;700&display=swap",
       },
-      { rel: "icon", type: "image/png", href: "/favicon.png" },
+      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
-
   }),
   shellComponent: RootShell,
   component: RootComponent,
@@ -116,9 +117,17 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
+        {/* Set the dark/light class before paint so there's no flash of the wrong theme on
+         * load — reads the person's saved choice, falling back to their system preference. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}})();",
+          }}
+        />
         <HeadContent />
       </head>
-      <body>
+      <body className="doodle-bg">
         {children}
         <Scripts />
       </body>
