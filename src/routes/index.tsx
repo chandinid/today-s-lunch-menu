@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { fetchMonthMenu, type MenuDay } from "@/lib/menu.functions";
 import { MenuCalendar } from "@/components/MenuCalendar";
+import { DayCarousel } from "@/components/DayCarousel";
 import { DayDetailModal, LEAF, MEALS } from "@/components/DayDetailModal";
 import { splitMealText } from "@/lib/meal-text";
 
@@ -44,9 +45,7 @@ export const Route = createFileRoute("/")({
 });
 
 function sfToday() {
-  const now = new Date(
-    new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" }),
-  );
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
   return now;
 }
 
@@ -66,8 +65,7 @@ function Index() {
   const [cursor, setCursor] = useState({ month: today.getMonth(), year: today.getFullYear() });
   const year = cursor.year;
   const month = MONTHS[cursor.month]!;
-  const isCurrentMonth =
-    cursor.month === today.getMonth() && cursor.year === today.getFullYear();
+  const isCurrentMonth = cursor.month === today.getMonth() && cursor.year === today.getFullYear();
 
   const { data, isPending } = useQuery({
     queryKey: ["menu", month, year],
@@ -78,8 +76,14 @@ function Index() {
   // Prefetch adjacent months so the prev/next arrows feel instant.
   const queryClient = useQueryClient();
   const adjacent = [
-    { month: cursor.month === 0 ? 11 : cursor.month - 1, year: cursor.month === 0 ? cursor.year - 1 : cursor.year },
-    { month: cursor.month === 11 ? 0 : cursor.month + 1, year: cursor.month === 11 ? cursor.year + 1 : cursor.year },
+    {
+      month: cursor.month === 0 ? 11 : cursor.month - 1,
+      year: cursor.month === 0 ? cursor.year - 1 : cursor.year,
+    },
+    {
+      month: cursor.month === 11 ? 0 : cursor.month + 1,
+      year: cursor.month === 11 ? cursor.year + 1 : cursor.year,
+    },
   ];
   useEffect(() => {
     for (const a of adjacent) {
@@ -94,13 +98,9 @@ function Index() {
   }, [cursor.month, cursor.year]);
 
   const days = data?.ok ? data.menu.days : [];
-  const todayEntry = isCurrentMonth
-    ? days.find((d) => d.day === today.getDate())
-    : undefined;
   const pdfUrl = data?.ok ? data.menu.pdfUrl : undefined;
 
-  const selectedEntry =
-    selectedDay != null ? days.find((d) => d.day === selectedDay) : undefined;
+  const selectedEntry = selectedDay != null ? days.find((d) => d.day === selectedDay) : undefined;
 
   return (
     <main className="mx-auto w-full max-w-4xl px-5 pb-20 pt-10 sm:pt-16">
@@ -108,58 +108,11 @@ function Index() {
         <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-primary">
           SFUSD Pre-K · LunchMaster
         </p>
-        <p className="mt-2 font-display text-3xl leading-tight text-foreground sm:text-4xl">
-          {today.toLocaleDateString("en-US", {
-            weekday: "long",
-            month: "long",
-            day: "numeric",
-          })}
-        </p>
         <h1 className="mt-2 text-4xl leading-tight sm:text-5xl">What&rsquo;s on the menu today!</h1>
       </header>
 
       <section className="mt-8">
-        {isPending ? (
-          <div className="grid gap-4">
-            <div className="h-40 animate-pulse rounded-3xl border border-border bg-card/70" />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="h-32 animate-pulse rounded-3xl border border-border bg-card/70" />
-              <div className="h-32 animate-pulse rounded-3xl border border-border bg-card/70" />
-            </div>
-          </div>
-        ) : data && !data.ok ? (
-          <Notice title="Menu unavailable" body={data.error} />
-        ) : todayEntry ? (
-          <div className="grid gap-4">
-            <TodayLunchHero entry={todayEntry} pdfUrl={pdfUrl} />
-            <div className="grid gap-4 sm:grid-cols-2">
-              {MEALS.filter((m) => m.key !== "lunch").map((meal) => (
-                <article
-                  key={meal.key}
-                  className="rounded-3xl border border-border bg-card p-5 shadow-[var(--shadow-card)]"
-                >
-                  <span
-                    className={`inline-block rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-widest ${meal.chip}`}
-                  >
-                    {meal.label}
-                  </span>
-                  <p className="mt-3 font-display text-xl leading-snug">
-                    {todayEntry[meal.key] ?? "Not served today"}
-                  </p>
-                </article>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <Notice
-            title={isCurrentMonth ? "No meals today" : `Browsing ${month}`}
-            body={
-              isCurrentMonth
-                ? "Looks like a weekend, holiday, or a non-school day. Check the calendar below."
-                : "Scroll down for the full month."
-            }
-          />
-        )}
+        <DayCarousel today={today} />
       </section>
 
       <section className="mt-12">
@@ -299,53 +252,6 @@ function Index() {
         />
       ) : null}
     </main>
-  );
-}
-
-function TodayLunchHero({
-  entry,
-  pdfUrl,
-}: {
-  entry: MenuDay;
-  pdfUrl: string | undefined;
-}) {
-  const lunch = entry.lunch;
-  const holiday = lunch === "HOLIDAY";
-  const { main, alt } = lunch && !holiday ? splitMealText(lunch) : { main: null, alt: null };
-  const vegetarianMain = entry.lunchVegetarian === true;
-  return (
-    <article className="rounded-3xl border-2 border-primary bg-card p-6 shadow-[var(--shadow-lift)] sm:p-8">
-      <span className="inline-block rounded-full bg-primary px-3 py-1 text-xs font-extrabold uppercase tracking-[0.22em] text-primary-foreground">
-        Lunch
-      </span>
-      <p className="mt-4 flex items-start gap-2 font-display text-3xl leading-tight sm:text-4xl">
-        {vegetarianMain ? <span aria-hidden="true">{LEAF}</span> : null}
-        <span>{holiday ? "Holiday — no meals served" : (main ?? lunch ?? "Not served today")}</span>
-      </p>
-      {alt ? (
-        <p className="mt-3 flex items-start gap-2 rounded-2xl bg-secondary/60 px-4 py-3 font-display text-2xl leading-snug sm:text-3xl">
-          <span aria-hidden="true">{LEAF}</span>
-          <span>
-            <span className="mr-1.5 align-middle text-xs font-extrabold uppercase tracking-wide text-muted-foreground">
-              Upon request:
-            </span>
-            {alt}
-          </span>
-        </p>
-      ) : null}
-      {pdfUrl ? (
-        <p className="mt-4 text-sm">
-          <a
-            className="font-bold text-primary underline underline-offset-2"
-            href={pdfUrl}
-            target="_blank"
-            rel="noreferrer"
-          >
-            View the source menu (PDF)
-          </a>
-        </p>
-      ) : null}
-    </article>
   );
 }
 
