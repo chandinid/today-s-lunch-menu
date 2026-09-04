@@ -12,4 +12,11 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  // We deploy to Netlify (not Lovable's own Cloudflare hosting) now, so build Netlify Functions
+  // output instead of the Cloudflare Worker the Lovable wrapper defaults to. This only applies
+  // outside Lovable's own build sandbox (see isSandboxEnvironment in the wrapper), so Lovable's
+  // in-app preview still builds fine — it just isn't what we deploy from anymore.
+  nitro: {
+    preset: "netlify",
+  },
 });
