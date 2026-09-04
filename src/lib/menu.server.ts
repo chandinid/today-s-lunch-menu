@@ -1,5 +1,5 @@
 import { extractText, getDocumentProxy } from "unpdf";
-import { getAllergenIndex, matchAllergens } from "./allergens.server";
+import { getAllergenIndex, matchAllergens, matchVegetarian } from "./allergens.server";
 
 export const MENUS_PAGE_URL =
   "https://www.sfusd.edu/services/health-wellness/nutrition-school-meals/menus";
@@ -27,6 +27,13 @@ export type MenuDay = {
   breakfastAllergens: string[] | null;
   lunchAllergens: string[] | null;
   snackAllergens: string[] | null;
+  /**
+   * Whether the day's main lunch item (before any "Upon Request:" alternative) is vegetarian,
+   * per the K-12 lunch allergen sheet's "Veg" marker. null when there's no confident match —
+   * the "Upon Request" alternative itself is always the vegetarian option (SFUSD marks it that
+   * way by definition), so it doesn't need this flag; the UI treats it as vegetarian directly.
+   */
+  lunchVegetarian: boolean | null;
 };
 
 export type MonthMenu = {
@@ -142,6 +149,7 @@ async function parseWithAI(pages: string[]): Promise<MenuDay[]> {
       breakfastAllergens: null as string[] | null,
       lunchAllergens: null as string[] | null,
       snackAllergens: null as string[] | null,
+      lunchVegetarian: null as boolean | null,
     }))
     .sort((a, b) => a.day - b.day);
   return days;
@@ -167,6 +175,7 @@ export async function getMonthMenu(month: string, year: number): Promise<MonthMe
       d.breakfastAllergens = matchAllergens(d.breakfast, allergenIndex.breakfast);
       d.lunchAllergens = matchAllergens(d.lunch, allergenIndex.lunch);
       d.snackAllergens = matchAllergens(d.snack, allergenIndex.snack);
+      d.lunchVegetarian = matchVegetarian(d.lunch, allergenIndex.lunch);
     }
   } catch (error) {
     // Allergen matching is best-effort and never blocks the menu itself.

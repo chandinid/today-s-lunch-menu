@@ -3,6 +3,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { fetchMonthMenu, type MenuDay } from "@/lib/menu.functions";
 import { MenuCalendar } from "@/components/MenuCalendar";
+import { splitMealText } from "@/lib/meal-text";
+
+const LEAF = "🍃";
 
 const MONTHS = [
   "January",
@@ -313,14 +316,28 @@ function TodayLunchHero({
 }) {
   const lunch = entry.lunch;
   const holiday = lunch === "HOLIDAY";
+  const { main, alt } = lunch && !holiday ? splitMealText(lunch) : { main: null, alt: null };
+  const vegetarianMain = entry.lunchVegetarian === true;
   return (
     <article className="rounded-3xl border-2 border-primary bg-card p-6 shadow-[var(--shadow-lift)] sm:p-8">
       <span className="inline-block rounded-full bg-primary px-3 py-1 text-xs font-extrabold uppercase tracking-[0.22em] text-primary-foreground">
         Lunch
       </span>
-      <p className="mt-4 font-display text-3xl leading-tight sm:text-4xl">
-        {holiday ? "Holiday — no meals served" : (lunch ?? "Not served today")}
+      <p className="mt-4 flex items-start gap-2 font-display text-3xl leading-tight sm:text-4xl">
+        {vegetarianMain ? <span aria-hidden="true">{LEAF}</span> : null}
+        <span>{holiday ? "Holiday — no meals served" : (main ?? lunch ?? "Not served today")}</span>
       </p>
+      {alt ? (
+        <p className="mt-3 flex items-start gap-2 rounded-2xl bg-secondary/60 px-4 py-3 font-display text-2xl leading-snug sm:text-3xl">
+          <span aria-hidden="true">{LEAF}</span>
+          <span>
+            <span className="mr-1.5 align-middle text-xs font-extrabold uppercase tracking-wide text-muted-foreground">
+              Upon request:
+            </span>
+            {alt}
+          </span>
+        </p>
+      ) : null}
       {pdfUrl ? (
         <p className="mt-4 text-sm">
           <a
@@ -379,17 +396,32 @@ function DayCard({
       {holiday ? (
         <p className="mt-2 text-sm font-bold text-berry">Holiday — no meals served</p>
       ) : (
-        <dl className="mt-2 space-y-1.5 text-sm">
-          {MEALS.map((meal) =>
-            entry[meal.key] ? (
+        <dl className="mt-2 space-y-2 text-sm">
+          {MEALS.map((meal) => {
+            const value = entry[meal.key];
+            if (!value) return null;
+            const { main, alt } = splitMealText(value);
+            const vegetarianMain = meal.key === "lunch" && entry.lunchVegetarian === true;
+            return (
               <div key={meal.key} className="flex gap-2">
                 <dt className="w-20 shrink-0 font-bold uppercase tracking-wide text-muted-foreground">
                   {meal.label}
                 </dt>
-                <dd className="line-clamp-2">{entry[meal.key]}</dd>
+                <dd className="flex-1">
+                  <span className="line-clamp-2">
+                    {vegetarianMain ? <span aria-hidden="true">{LEAF} </span> : null}
+                    {main}
+                  </span>
+                  {alt ? (
+                    <span className="mt-1 flex items-start gap-1 font-bold text-foreground">
+                      {meal.key === "lunch" ? <span aria-hidden="true">{LEAF}</span> : null}
+                      <span className="line-clamp-2">Upon request: {alt}</span>
+                    </span>
+                  ) : null}
+                </dd>
               </div>
-            ) : null,
-          )}
+            );
+          })}
         </dl>
       )}
     </article>
@@ -441,8 +473,9 @@ function DayDetailModal({
             {MEALS.map((meal) => {
               const value = entry[meal.key];
               if (!value) return null;
-              const [main, ...alts] = value.split(/\s*Upon Request:\s*/i);
+              const { main, alt } = splitMealText(value);
               const allergens = entry[meal.allergensKey];
+              const vegetarianMain = meal.key === "lunch" && entry.lunchVegetarian === true;
               return (
                 <div key={meal.key}>
                   <dt className="flex items-center gap-2">
@@ -452,12 +485,24 @@ function DayDetailModal({
                       {meal.label}
                     </span>
                   </dt>
-                  <dd className="mt-2 font-display text-lg leading-snug">{main}</dd>
-                  {alts.length > 0 ? (
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      <span className="font-bold text-foreground">Upon request:</span>{" "}
-                      {alts.join(" · ")}
-                    </p>
+                  <dd className="mt-2 flex items-start gap-1.5 font-display text-lg leading-snug">
+                    {vegetarianMain ? <span aria-hidden="true">{LEAF}</span> : null}
+                    <span>{main}</span>
+                  </dd>
+                  {alt ? (
+                    <div className="mt-2 flex items-start gap-1.5 rounded-2xl bg-secondary/60 px-3 py-2">
+                      {meal.key === "lunch" ? (
+                        <span aria-hidden="true" className="mt-0.5">
+                          {LEAF}
+                        </span>
+                      ) : null}
+                      <p className="font-display text-lg leading-snug">
+                        <span className="mr-1.5 align-middle text-xs font-extrabold uppercase tracking-wide text-muted-foreground">
+                          Upon request:
+                        </span>
+                        {alt}
+                      </p>
+                    </div>
                   ) : null}
                   {allergens && allergens.length > 0 ? (
                     <p className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">

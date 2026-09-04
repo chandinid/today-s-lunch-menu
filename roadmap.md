@@ -16,5 +16,13 @@
       publishes a new period, or once a Pre-K-specific / auto-discoverable source exists)
 - [ ] Pull nutrition (calories/carbs) data — same shared Drive folder has reference PDFs but
       they aren't per-item, so this needs a different approach than the allergen matching
+- [x] Fix "Upon Request" vegetarian alternatives reading as missing — the calendar and list
+      views were rendering the raw meal text with a 2-line clamp, which silently cut off the
+      "Upon Request: ..." alternative whenever the combined text ran long. Now every view
+      splits the main item from the alternative and always shows both. Also added a 🍃 icon
+      next to vegetarian lunch items: the "Upon Request" alternative is always the vegetarian
+      option (per SFUSD's own printed note on the Pre-K menu), and the main item gets the icon
+      when it matches a "Veg"-tagged entry in the K-12 lunch allergen sheet (same
+      never-guess matching used for allergens — no match means no icon, not a guess).
 - [x] Change hero heading to "What's on the menu today!"
 - [x] Auto-pick the current month's PDF each month

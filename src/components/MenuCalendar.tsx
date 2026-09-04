@@ -1,5 +1,7 @@
 import type { MenuDay } from "@/lib/menu.functions";
+import { splitMealText } from "@/lib/meal-text";
 
+const LEAF = "🍃";
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 
 const MEALS = [
@@ -90,17 +92,34 @@ export function MenuCalendar({
                 {holiday ? (
                   <p className="mt-2 text-xs font-bold text-berry">Holiday — no meals</p>
                 ) : entry ? (
-                  <ul className="mt-1.5 space-y-1 text-[0.72rem] leading-snug">
-                    {MEALS.map((meal) =>
-                      entry[meal.key] ? (
+                  <ul className="mt-1.5 space-y-1.5 text-[0.72rem] leading-snug">
+                    {MEALS.map((meal) => {
+                      const value = entry[meal.key];
+                      if (!value) return null;
+                      const { main, alt } = splitMealText(value);
+                      const vegetarianMain = meal.key === "lunch" && entry.lunchVegetarian === true;
+                      return (
                         <li key={meal.key} className="flex gap-1.5">
                           <span className={`mt-px shrink-0 font-extrabold ${meal.color}`}>
                             {meal.label}
                           </span>
-                          <span className="line-clamp-2">{entry[meal.key]}</span>
+                          <span className="min-w-0">
+                            <span className="line-clamp-2">
+                              {vegetarianMain ? <span aria-hidden="true">{LEAF} </span> : null}
+                              {main}
+                            </span>
+                            {alt ? (
+                              <span className="mt-0.5 flex items-start gap-1 font-extrabold text-foreground">
+                                {meal.key === "lunch" ? (
+                                  <span aria-hidden="true">{LEAF}</span>
+                                ) : null}
+                                <span className="line-clamp-2">Upon request: {alt}</span>
+                              </span>
+                            ) : null}
+                          </span>
                         </li>
-                      ) : null,
-                    )}
+                      );
+                    })}
                   </ul>
                 ) : (
                   <p className="mt-2 text-xs text-muted-foreground">No meals posted</p>
