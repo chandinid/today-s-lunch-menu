@@ -1,4 +1,5 @@
 import { extractText, getDocumentProxy } from "unpdf";
+import { callClaudeForJson } from "./claude.server";
 
 /**
  * SFUSD does not publish a Pre-K-specific allergen sheet. Chandini is working with the
@@ -84,33 +85,11 @@ Rules:
   false otherwise. Do not infer this from the dish name — only from the printed "Veg" marker.
 - "allergens" is the list exactly as printed for that item (include named meats like Chicken,
   Beef, Turkey, Pork if listed). Do not infer or add anything not printed on the sheet.
-- If an item has no allergens listed, use an empty array, not null.`;
+- If an item has no allergens listed, use an empty array, not null.
+- Respond with ONLY the JSON object — no markdown code fences, no explanation, no other text.`;
 
 async function parseItemsWithAI(text: string): Promise<AllergenIndex> {
-  const apiKey = process.env["LOVABLE_API_KEY"];
-  if (!apiKey) throw new Error("AI is not configured for this project");
-
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: "google/gemini-3-flash",
-      messages: [
-        { role: "system", content: ITEM_SYSTEM_PROMPT },
-        { role: "user", content: text },
-      ],
-      response_format: { type: "json_object" },
-    }),
-  });
-
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Allergen sheet parsing failed [${res.status}]: ${body.slice(0, 300)}`);
-  }
-
-  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-  const content = data.choices?.[0]?.message?.content ?? "{}";
-  const parsed = JSON.parse(content) as {
+  const parsed = (await callClaudeForJson(ITEM_SYSTEM_PROMPT, text)) as {
     items?: { name?: string; allergens?: string[]; vegetarian?: boolean }[];
   };
 

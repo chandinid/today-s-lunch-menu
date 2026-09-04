@@ -1,5 +1,6 @@
 import { extractText, getDocumentProxy } from "unpdf";
 import { getAllergenIndex, matchAllergens, matchVegetarian } from "./allergens.server";
+import { callClaudeForJson } from "./claude.server";
 
 export const MENUS_PAGE_URL =
   "https://www.sfusd.edu/services/health-wellness/nutrition-school-meals/menus";
@@ -105,38 +106,14 @@ Rules:
 - One entry per day number that appears anywhere in the calendars, sorted ascending.
 - Use null for a meal that has no item that day.
 - Keep the item wording from the PDF, including "Upon Request: ..." alternatives, but strip the leading day number.
-- If a cell says HOLIDAY or NO SCHOOL, use exactly "HOLIDAY" for that meal.`;
+- If a cell says HOLIDAY or NO SCHOOL, use exactly "HOLIDAY" for that meal.
+- Respond with ONLY the JSON object — no markdown code fences, no explanation, no other text.`;
 
 async function parseWithAI(pages: string[]): Promise<MenuDay[]> {
-  const apiKey = process.env["LOVABLE_API_KEY"];
-  if (!apiKey) throw new Error("AI is not configured for this project");
-
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: "google/gemini-3-flash",
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        {
-          role: "user",
-          content: pages.map((p, i) => `--- PDF PAGE ${i + 1} ---\n${p}`).join("\n\n"),
-        },
-      ],
-      response_format: { type: "json_object" },
-    }),
-  });
-
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Menu parsing failed [${res.status}]: ${body.slice(0, 300)}`);
-  }
-
-  const data = (await res.json()) as {
-    choices?: { message?: { content?: string } }[];
-  };
-  const content = data.choices?.[0]?.message?.content ?? "{}";
-  const parsed = JSON.parse(content) as {
+  const parsed = (await callClaudeForJson(
+    SYSTEM_PROMPT,
+    pages.map((p, i) => `--- PDF PAGE ${i + 1} ---\n${p}`).join("\n\n"),
+  )) as {
     days?: { day: number; breakfast?: string | null; lunch?: string | null; snack?: string | null }[];
   };
   const days = (parsed.days ?? [])
