@@ -110,7 +110,7 @@ function Index() {
             day: "numeric",
           })}
         </p>
-        <h1 className="mt-2 text-4xl leading-tight sm:text-5xl">What&rsquo;s on the menu today?</h1>
+        <h1 className="mt-2 text-4xl leading-tight sm:text-5xl">What&rsquo;s on the menu today!</h1>
       </header>
 
       <section className="mt-8">
