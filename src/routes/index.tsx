@@ -3,7 +3,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { fetchMonthMenu, type MenuDay } from "@/lib/menu.functions";
 import { MenuCalendar } from "@/components/MenuCalendar";
-import { WeekStrip } from "@/components/WeekStrip";
 import { DayDetailModal, LEAF, MEALS } from "@/components/DayDetailModal";
 import { splitMealText } from "@/lib/meal-text";
 
@@ -118,10 +117,6 @@ function Index() {
         </p>
         <h1 className="mt-2 text-4xl leading-tight sm:text-5xl">What&rsquo;s on the menu today!</h1>
       </header>
-
-      <section className="mt-8">
-        <WeekStrip today={today} />
-      </section>
 
       <section className="mt-8">
         {isPending ? (
