@@ -20,9 +20,24 @@ const MONTHS = [
 ];
 
 const MEALS = [
-  { key: "breakfast", label: "Breakfast", chip: "bg-accent text-accent-foreground" },
-  { key: "lunch", label: "Lunch", chip: "bg-primary text-primary-foreground" },
-  { key: "snack", label: "Snack", chip: "bg-berry text-berry-foreground" },
+  {
+    key: "breakfast",
+    allergensKey: "breakfastAllergens",
+    label: "Breakfast",
+    chip: "bg-accent text-accent-foreground",
+  },
+  {
+    key: "lunch",
+    allergensKey: "lunchAllergens",
+    label: "Lunch",
+    chip: "bg-primary text-primary-foreground",
+  },
+  {
+    key: "snack",
+    allergensKey: "snackAllergens",
+    label: "Snack",
+    chip: "bg-berry text-berry-foreground",
+  },
 ] as const;
 
 export const Route = createFileRoute("/")({
@@ -427,6 +442,7 @@ function DayDetailModal({
               const value = entry[meal.key];
               if (!value) return null;
               const [main, ...alts] = value.split(/\s*Upon Request:\s*/i);
+              const allergens = entry[meal.allergensKey];
               return (
                 <div key={meal.key}>
                   <dt className="flex items-center gap-2">
@@ -443,9 +459,30 @@ function DayDetailModal({
                       {alts.join(" · ")}
                     </p>
                   ) : null}
+                  {allergens && allergens.length > 0 ? (
+                    <p className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+                      <span className="font-bold uppercase tracking-wide text-muted-foreground">
+                        Contains:
+                      </span>
+                      {allergens.map((a) => (
+                        <span
+                          key={a}
+                          className="rounded-full border border-border bg-secondary px-2 py-0.5 font-bold text-foreground"
+                        >
+                          {a}
+                        </span>
+                      ))}
+                    </p>
+                  ) : null}
                 </div>
               );
             })}
+            <p className="border-t border-border pt-3 text-xs text-muted-foreground">
+              Allergen tags are matched from SFUSD's district allergen sheets where the item
+              name lines up closely enough to be confident — they aren't official Pre-K
+              records and won't cover every item. Always confirm with your child's teacher or
+              the school for a confirmed allergen.
+            </p>
           </dl>
         )}
 

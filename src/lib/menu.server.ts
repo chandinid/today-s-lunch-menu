@@ -1,4 +1,5 @@
 import { extractText, getDocumentProxy } from "unpdf";
+import { getAllergenIndex, matchAllergens } from "./allergens.server";
 
 export const MENUS_PAGE_URL =
   "https://www.sfusd.edu/services/health-wellness/nutrition-school-meals/menus";
@@ -23,6 +24,9 @@ export type MenuDay = {
   breakfast: string | null;
   lunch: string | null;
   snack: string | null;
+  breakfastAllergens: string[] | null;
+  lunchAllergens: string[] | null;
+  snackAllergens: string[] | null;
 };
 
 export type MonthMenu = {
@@ -125,7 +129,9 @@ async function parseWithAI(pages: string[]): Promise<MenuDay[]> {
     choices?: { message?: { content?: string } }[];
   };
   const content = data.choices?.[0]?.message?.content ?? "{}";
-  const parsed = JSON.parse(content) as { days?: MenuDay[] };
+  const parsed = JSON.parse(content) as {
+    days?: { day: number; breakfast?: string | null; lunch?: string | null; snack?: string | null }[];
+  };
   const days = (parsed.days ?? [])
     .filter((d) => Number.isInteger(d.day) && d.day >= 1 && d.day <= 31)
     .map((d) => ({
@@ -133,6 +139,9 @@ async function parseWithAI(pages: string[]): Promise<MenuDay[]> {
       breakfast: d.breakfast || null,
       lunch: d.lunch || null,
       snack: d.snack || null,
+      breakfastAllergens: null as string[] | null,
+      lunchAllergens: null as string[] | null,
+      snackAllergens: null as string[] | null,
     }))
     .sort((a, b) => a.day - b.day);
   return days;
@@ -151,6 +160,18 @@ export async function getMonthMenu(month: string, year: number): Promise<MonthMe
 
   const pages = await pdfPages(fileId);
   const days = await parseWithAI(pages);
+
+  try {
+    const allergenIndex = await getAllergenIndex();
+    for (const d of days) {
+      d.breakfastAllergens = matchAllergens(d.breakfast, allergenIndex.breakfast);
+      d.lunchAllergens = matchAllergens(d.lunch, allergenIndex.lunch);
+      d.snackAllergens = matchAllergens(d.snack, allergenIndex.snack);
+    }
+  } catch (error) {
+    // Allergen matching is best-effort and never blocks the menu itself.
+    console.error("Allergen matching failed", error);
+  }
 
   const value: MonthMenu = {
     month,
