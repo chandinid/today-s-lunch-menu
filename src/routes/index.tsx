@@ -26,17 +26,20 @@ const MONTHS = [
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Today's Pre-K Lunch | SFUSD Menu at a Glance" },
+      { title: "SFUSD Pre-K Lunch Menu | Elementary & Early Ed Campuses" },
       {
         name: "description",
         content:
-          "See what's for breakfast, lunch, and snack today at SFUSD Pre-K schools, pulled straight from the monthly LunchMaster menu.",
+          "See what's for breakfast, lunch, and snack today at SFUSD Pre-K schools situated on elementary school campuses and all standalone early education schools, pulled straight from the monthly LunchMaster menu.",
       },
-      { property: "og:title", content: "Today's Pre-K Lunch | SFUSD Menu at a Glance" },
+      {
+        property: "og:title",
+        content: "SFUSD Pre-K Lunch Menu | Elementary & Early Ed Campuses",
+      },
       {
         property: "og:description",
         content:
-          "Today's SFUSD Pre-K breakfast, lunch, and snack — no more digging through monthly PDFs.",
+          "Today's SFUSD Pre-K breakfast, lunch, and snack for schools on elementary campuses and all standalone early education schools — no more digging through monthly PDFs.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -118,7 +121,7 @@ function Index() {
           className="mx-auto mt-1.5 h-3 w-40 text-primary sm:w-52"
         >
           <path
-            d="M2 8c8-8 16 6 24-2s16 6 24-2 16 6 24-2 16 6 24-2 16 6 24-2 16 6 24-2 16 6 24-2"
+            d="M2 8c8-8 16 6 24-2s16 6 24-2 16 6 24-2 16 6 24-2 16 6 24-2 16 6 24-2"
             fill="none"
             stroke="currentColor"
             strokeWidth="3"
