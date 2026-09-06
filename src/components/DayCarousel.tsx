@@ -61,12 +61,20 @@ function sameDay(a: Date, b: Date): boolean {
   );
 }
 
+// Schools are closed Sat/Sun, so there's nothing to show for "today" on a weekend — jump ahead
+// to the Monday that follows instead.
+function effectiveToday(today: Date): Date {
+  const midnight = atMidnight(today);
+  return isWeekday(midnight) ? midnight : nextWeekday(midnight, 1);
+}
+
 /** A stacked carousel of "photo frame" day cards — today (or whichever day is selected) sits
  * large and in front, with the day before and after peeking out from behind on either side.
  * Tap a peeking card, or the arrows, to bring a different day forward; tap the front card to
  * open its full detail (allergens + source PDF), same as the calendar below. */
 export function DayCarousel({ today }: { today: Date }) {
-  const [selected, setSelected] = useState(() => atMidnight(today));
+  const anchor = useMemo(() => effectiveToday(today), [today]);
+  const [selected, setSelected] = useState(() => anchor);
   const [showDetail, setShowDetail] = useState(false);
 
   const prevDate = useMemo(() => nextWeekday(selected, -1), [selected]);
@@ -104,7 +112,7 @@ export function DayCarousel({ today }: { today: Date }) {
   }
 
   const selectedMenu = menuFor(selected);
-  const isToday = sameDay(selected, atMidnight(today));
+  const isToday = sameDay(selected, anchor);
 
   // Swipe support for mobile: drag left/right anywhere on the carousel to page days,
   // same as tapping the arrows or a peeking side card.
@@ -136,7 +144,7 @@ export function DayCarousel({ today }: { today: Date }) {
         <DayFrame
           date={prevDate}
           menu={menuFor(prevDate)}
-          today={today}
+          today={anchor}
           layer="behind"
           side="left"
           onClick={() => setSelected(prevDate)}
@@ -144,7 +152,7 @@ export function DayCarousel({ today }: { today: Date }) {
         <DayFrame
           date={nextDate}
           menu={menuFor(nextDate)}
-          today={today}
+          today={anchor}
           layer="behind"
           side="right"
           onClick={() => setSelected(nextDate)}
@@ -152,7 +160,7 @@ export function DayCarousel({ today }: { today: Date }) {
         <DayFrame
           date={selected}
           menu={selectedMenu}
-          today={today}
+          today={anchor}
           layer="front"
           onClick={() => selectedMenu.entry && setShowDetail(true)}
         />
@@ -164,7 +172,7 @@ export function DayCarousel({ today }: { today: Date }) {
         <div className="mt-2 text-center">
           <button
             type="button"
-            onClick={() => setSelected(atMidnight(today))}
+            onClick={() => setSelected(anchor)}
             className="rounded-full border border-border bg-card px-3 py-1 text-xs font-extrabold uppercase tracking-widest text-primary hover:bg-secondary"
           >
             Back to today
