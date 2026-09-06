@@ -231,6 +231,24 @@ function Index() {
       </section>
 
       <footer className="mt-14 border-t border-border pt-6 text-center text-xs text-muted-foreground">
+        <p className="mb-2">
+          This site tracks the{" "}
+          {pdfUrl ? (
+            <a
+              className="font-bold text-primary underline underline-offset-2"
+              href={pdfUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              LunchMaster PreK Breakfast, Lunch & Snack
+            </a>
+          ) : (
+            "LunchMaster PreK Breakfast, Lunch & Snack"
+          )}{" "}
+          menu — available at Pre-K schools situated on elementary school campuses and all
+          standalone early education schools. Pre-K Snack is only provided to year-round, full-day
+          Pre-K programs, per the CACFP.
+        </p>
         <p>
           Menus are read automatically from the SFUSD{" "}
           <a
