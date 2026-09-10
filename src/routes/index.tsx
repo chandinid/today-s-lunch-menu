@@ -30,7 +30,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "See what's for breakfast, lunch, and snack today at SFUSD Pre-K schools situated on elementary school campuses and all standalone early education schools, pulled straight from the monthly LunchMaster menu.",
+          "See what's for breakfast, lunch, and snack today at SFUSD Pre-K schools situated on elementary school campuses and all standalone early education schools, pulled straight from the Revolution Foods Pre-K menu.",
       },
       {
         property: "og:title",
@@ -39,7 +39,7 @@ export const Route = createFileRoute("/")({
       {
         property: "og:description",
         content:
-          "Today's SFUSD Pre-K breakfast, lunch, and snack for schools on elementary campuses and all standalone early education schools — no more digging through monthly PDFs.",
+          "Today's SFUSD Pre-K breakfast, lunch, and snack for schools on elementary campuses and all standalone early education schools — no more digging through the source PDF.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -112,7 +112,7 @@ function Index() {
 
       <header className="reveal text-center">
         <p className="text-sm font-extrabold uppercase tracking-[0.22em] text-primary sm:text-base">
-          SFUSD Pre-K · LunchMaster
+          SFUSD Pre-K · Menu Tracker
         </p>
         <h1 className="mt-2 text-4xl leading-tight sm:text-5xl">What&rsquo;s on the menu today!</h1>
         <svg
@@ -243,10 +243,10 @@ function Index() {
               target="_blank"
               rel="noreferrer"
             >
-              LunchMaster PreK Breakfast, Lunch & Snack
+              Revolution Foods Pre-K Breakfast, Lunch & Snack
             </a>
           ) : (
-            "LunchMaster PreK Breakfast, Lunch & Snack"
+            "Revolution Foods Pre-K Breakfast, Lunch & Snack"
           )}{" "}
           menu — available at Pre-K schools situated on elementary school campuses and all
           standalone early education schools. Pre-K Snack is only provided to year-round, full-day

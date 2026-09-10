@@ -88,41 +88,29 @@ async function writePersistedCache(key: string, entry: CacheEntry): Promise<void
   }
 }
 
-/** Scrape the SFUSD menus page for the "LunchMaster PreK" Drive file per month. */
-export async function findPreKMenuFiles(): Promise<Record<string, string>> {
+/** Scrape the SFUSD menus page for the Pre-K Breakfast/Lunch/Snack Drive file. SFUSD used to
+ * post a fresh "LunchMaster PreK" file per month under a "{Month} Menus" heading; they've since
+ * switched vendors to Revolution Foods and now publish a single standing "Pre-K Breakfast,
+ * Lunch, and Snack" link that they update in place, so there's just one file to find rather than
+ * one per month. Matching on the link's own visible text (not which vendor heading it sits
+ * under) keeps this working across future vendor swaps too. */
+export async function findPreKMenuFileId(): Promise<string | null> {
   const res = await fetch(MENUS_PAGE_URL, {
     headers: { "user-agent": "Mozilla/5.0 (compatible; SchoolMenuBot/1.0)" },
   });
   if (!res.ok) throw new Error(`Could not load the SFUSD menus page (${res.status})`);
   const html = await res.text();
 
-  const headings: { month: string; index: number }[] = [];
-  const headingRe = /<h[23][^>]*>\s*([A-Z][a-z]+)\s+Menus\s*<\/h[23]>/g;
+  const linkRe =
+    /<a[^>]+href="https:\/\/drive\.google\.com\/file\/d\/([^/"]+)[^"]*"[^>]*>([\s\S]{0,200}?)<\/a>/g;
   let m: RegExpExecArray | null;
-  while ((m = headingRe.exec(html))) {
-    const month = m[1] as string;
-    if ((MONTHS as readonly string[]).includes(month)) {
-      headings.push({ month, index: m.index });
+  while ((m = linkRe.exec(html))) {
+    const text = (m[2] ?? "").replace(/<[^>]*>/g, "");
+    if (/pre\s*-?\s*k/i.test(text)) {
+      return m[1] as string;
     }
   }
-
-  const result: Record<string, string> = {};
-  headings.forEach((h, i) => {
-    const end = headings[i + 1]?.index ?? html.length;
-    const chunk = html.slice(h.index, end);
-    const linkRe =
-      /<a[^>]+href="https:\/\/drive\.google\.com\/file\/d\/([^/"]+)[^"]*"[^>]*>([\s\S]{0,200}?)<\/a>/g;
-    let l: RegExpExecArray | null;
-    while ((l = linkRe.exec(chunk))) {
-      const text = (l[2] ?? "").replace(/<[^>]*>/g, "");
-      if (/pre\s*-?\s*k/i.test(text)) {
-        result[h.month] = l[1] as string;
-        break;
-      }
-    }
-  });
-
-  return result;
+  return null;
 }
 
 async function pdfPages(fileId: string): Promise<string[]> {
@@ -140,19 +128,21 @@ const SYSTEM_PROMPT = `You convert a school meal calendar PDF into JSON.
 The PDF has pages for BREAKFAST, LUNCH and SNACK laid out as a Monday-Friday calendar.
 Each cell starts with the day-of-month number followed by the meal.
 Return ONLY JSON of the shape:
-{"days":[{"day":1,"breakfast":"...","lunch":"...","snack":"..."}]}
+{"month":"September","days":[{"day":1,"breakfast":"...","lunch":"...","snack":"..."}]}
 Rules:
+- "month" is the calendar month name this PDF's calendar is for (e.g. "September"), read from the PDF's own heading/title text. Use null if you can't tell.
 - One entry per day number that appears anywhere in the calendars, sorted ascending.
 - Use null for a meal that has no item that day.
 - Keep the item wording from the PDF, including "Upon Request: ..." alternatives, but strip the leading day number.
 - If a cell says HOLIDAY or NO SCHOOL, use exactly "HOLIDAY" for that meal.
 - Respond with ONLY the JSON object — no markdown code fences, no explanation, no other text.`;
 
-async function parseWithAI(pages: string[]): Promise<MenuDay[]> {
+async function parseWithAI(pages: string[]): Promise<{ month: string | null; days: MenuDay[] }> {
   const parsed = (await callClaudeForJson(
     SYSTEM_PROMPT,
     pages.map((p, i) => `--- PDF PAGE ${i + 1} ---\n${p}`).join("\n\n"),
   )) as {
+    month?: string | null;
     days?: {
       day: number;
       breakfast?: string | null;
@@ -173,7 +163,7 @@ async function parseWithAI(pages: string[]): Promise<MenuDay[]> {
       lunchVegetarian: null as boolean | null,
     }))
     .sort((a, b) => a.day - b.day);
-  return days;
+  return { month: parsed.month || null, days };
 }
 
 export async function getMonthMenu(month: string, year: number): Promise<MonthMenu> {
@@ -187,14 +177,22 @@ export async function getMonthMenu(month: string, year: number): Promise<MonthMe
     return persistedHit.value;
   }
 
-  const files = await findPreKMenuFiles();
-  const fileId = files[month];
+  const fileId = await findPreKMenuFileId();
   if (!fileId) {
     throw new Error(`SFUSD hasn't posted the Pre-K menu for ${month} yet.`);
   }
 
   const pages = await pdfPages(fileId);
-  const days = await parseWithAI(pages);
+  const { month: detectedMonth, days } = await parseWithAI(pages);
+
+  // SFUSD now publishes a single standing Pre-K menu link that they update in place each
+  // month, rather than a fresh file per month — so confirm the PDF we just downloaded is
+  // actually for the month being requested before trusting it as that month's menu (e.g. so
+  // browsing forward to a month SFUSD hasn't posted yet doesn't silently show this month's
+  // items relabeled under the wrong dates).
+  if (detectedMonth && detectedMonth.toLowerCase() !== month.toLowerCase()) {
+    throw new Error(`SFUSD hasn't posted the Pre-K menu for ${month} yet.`);
+  }
 
   try {
     const allergenIndex = await getAllergenIndex();

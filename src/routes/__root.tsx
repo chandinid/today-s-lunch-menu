@@ -81,7 +81,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Today's SFUSD Pre-K breakfast, lunch, and snack for schools on elementary campuses and all standalone early education schools, read from the monthly LunchMaster menu.",
+          "Today's SFUSD Pre-K breakfast, lunch, and snack for schools on elementary campuses and all standalone early education schools, read from the Revolution Foods Pre-K menu.",
       },
       { name: "author", content: "SFUSD Pre-K Menu" },
       {
@@ -91,7 +91,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         property: "og:description",
         content:
-          "Today's SFUSD Pre-K breakfast, lunch, and snack for schools on elementary campuses and all standalone early education schools, read from the monthly LunchMaster menu.",
+          "Today's SFUSD Pre-K breakfast, lunch, and snack for schools on elementary campuses and all standalone early education schools, read from the Revolution Foods Pre-K menu.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

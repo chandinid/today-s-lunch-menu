@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 export type { MenuDay, MonthMenu } from "./menu.server";
 
 /**
- * Returns the SFUSD LunchMaster Pre-K menu for a given month (defaults to the
+ * Returns the SFUSD Pre-K menu for a given month (defaults to the
  * current month in San Francisco time).
  */
 export const fetchMonthMenu = createServerFn({ method: "GET" })
@@ -11,9 +11,7 @@ export const fetchMonthMenu = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const { MONTHS, getMonthMenu } = await import("./menu.server");
 
-    const now = new Date(
-      new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" }),
-    );
+    const now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
     const month = data.month ?? MONTHS[now.getMonth()]!;
     const year = data.year ?? now.getFullYear();
 
