@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { extractText, getDocumentProxy } from "unpdf";
+import { extractText, extractTextItems, getDocumentProxy } from "unpdf";
 import { findPreKMenuFileId } from "@/lib/menu.server";
 
 /**
@@ -48,6 +48,13 @@ export const Route = createFileRoute("/api/public/debug-pdf")({
           const doc = await getDocumentProxy(buf);
           const { text } = await extractText(doc, { mergePages: false });
           const pages = Array.isArray(text) ? text : [text];
+          const { items } = await extractTextItems(doc);
+          const lunchItems = (items[1] ?? []).map((it) => ({
+            str: it.str,
+            x: Math.round(it.x),
+            y: Math.round(it.y),
+            hasEOL: it.hasEOL,
+          }));
           return new Response(
             JSON.stringify({
               ok: true,
@@ -55,7 +62,7 @@ export const Route = createFileRoute("/api/public/debug-pdf")({
               pageCount: pages.length,
               byteLength: buf.byteLength,
               responseHeaders,
-              pages,
+              lunchItems,
             }),
             {
               headers: { "Content-Type": "application/json" },
