@@ -40,7 +40,10 @@ export const Route = createFileRoute("/api/public/debug-pdf")({
               { status: 500, headers: { "Content-Type": "application/json" } },
             );
           }
-          const responseHeaders = Object.fromEntries(res.headers.entries());
+          const SAFE_HEADERS = ["last-modified", "etag", "cache-control", "content-length", "date"];
+          const responseHeaders = Object.fromEntries(
+            SAFE_HEADERS.map((h) => [h, res.headers.get(h)]),
+          );
           const buf = new Uint8Array(await res.arrayBuffer());
           const doc = await getDocumentProxy(buf);
           const { text } = await extractText(doc, { mergePages: false });
