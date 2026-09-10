@@ -21,16 +21,16 @@ const MONTHS = [
 
 const STALE_MS = 1000 * 60 * 30;
 
-// Lunch first — it's the thing this app is for — then breakfast, then snack. Each chip gets a
+// Breakfast, lunch, snack — the order the school day actually happens in. Each chip gets a
 // slight, fixed tilt so the row reads as hand-placed stickers rather than a uniform pill row.
 const MEAL_ORDER = [
-  { key: "lunch", label: "Lunch", chip: "bg-primary text-primary-foreground", tilt: "-rotate-2" },
   {
     key: "breakfast",
     label: "Breakfast",
     chip: "bg-accent text-accent-foreground",
     tilt: "rotate-2",
   },
+  { key: "lunch", label: "Lunch", chip: "bg-primary text-primary-foreground", tilt: "-rotate-2" },
   { key: "snack", label: "Snack", chip: "bg-berry text-berry-foreground", tilt: "-rotate-1" },
 ] as const;
 

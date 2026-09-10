@@ -166,6 +166,16 @@ function nearestColumn(x: number, columns: DayColumn[]): number {
 
 const WEEKDAY_RE = /^(Monday|Tuesday|Wednesday|Thursday|Friday)$/i;
 
+/** Matches the start of SFUSD's standing footer/legend boilerplate that appears once, below the
+ * last week's row, on every page (allergen key, "Breakfast/Lunch/Snack Includes: ...", "This
+ * institution is an equal opportunity provider...", seasonal fruit call-outs, etc). There's no
+ * day-header row below the last week to signal "the table has ended", so the column-bucketing
+ * above happily attributes this page-wide text to whichever day column it's horizontally
+ * closest to — usually the last week's days. Once a day's assembled text hits one of these
+ * markers, everything from that point on is boilerplate, not menu content, so it gets cut. */
+const FOOTER_MARKER_RE =
+  /(Breakfast|Lunch|Snack) Includes:|equal opportunity provider|subject to change without notice|\*?All (Grain|Breakfast|Lunch|Snack) Items|Whole Grain Rich|snacks? meet \d|Fruit Rotation:|fruits meet \d|Featured (Fruit|Produce):|Vegetarian Menu Items Do Not Contain Pork|New Menu Item/i;
+
 /** Reconstructs a "day-of-month -> cell text" map from a page's positional text items. This is
  * the fix for a real bug: unpdf's plain extractText() only returns a flat left-to-right,
  * top-to-bottom stream of text with no notion of columns, so when a mid-week cell is genuinely
@@ -220,7 +230,9 @@ function reconstructPage(items: StructuredTextItem[]): {
 
   const dayText = new Map<number, string>();
   for (const [day, lines] of dayLines) {
-    dayText.set(day, lines.join(" ").replace(/\s+/g, " ").trim());
+    const joined = lines.join(" ").replace(/\s+/g, " ").trim();
+    const footerStart = FOOTER_MARKER_RE.exec(joined)?.index;
+    dayText.set(day, (footerStart != null ? joined.slice(0, footerStart) : joined).trim());
   }
   return { title: titleLines.filter(Boolean).join(" "), dayText };
 }
