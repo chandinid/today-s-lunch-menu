@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { extractText, extractTextItems, getDocumentProxy } from "unpdf";
-import { findPreKMenuFileId } from "@/lib/menu.server";
+import { getStore } from "@netlify/blobs";
+import { getMonthMenu } from "@/lib/menu.server";
 
 /**
- * TEMPORARY debug route: dumps the raw per-page text unpdf extracts from the current Pre-K
- * menu PDF, bypassing the cache and the AI parse entirely. SFUSD appears to be actively editing
- * this file right now, so this is being used to check the live content directly. Remove once
- * the investigation is done.
+ * TEMPORARY debug route: forces a fresh (cache-bypassing) parse of the requested month using the
+ * new position-based table reconstruction, so the fix can be verified against the live PDF before
+ * trusting the real 6h-TTL cache to pick it up on its own. Remove once verified.
+ * Usage: /api/public/debug-pdf?month=September&year=2026
  */
 export const Route = createFileRoute("/api/public/debug-pdf")({
   server: {
@@ -14,60 +14,20 @@ export const Route = createFileRoute("/api/public/debug-pdf")({
       GET: async ({ request }: { request: Request }) => {
         try {
           const url = new URL(request.url);
-          const override = url.searchParams.get("fileId");
-          const fileId = override || (await findPreKMenuFileId());
-          if (!fileId) {
-            return new Response(JSON.stringify({ ok: false, error: "No fileId found" }), {
-              status: 404,
-              headers: { "Content-Type": "application/json" },
-            });
+          const month = url.searchParams.get("month") || "September";
+          const year = Number(url.searchParams.get("year") || "2026");
+
+          try {
+            const store = getStore({ name: "menu-cache", consistency: "strong" });
+            await store.delete(`${month}-${year}`);
+          } catch (error) {
+            console.error("cache delete failed (non-fatal for this debug route)", error);
           }
-          const bust = Date.now();
-          const res = await fetch(
-            `https://drive.google.com/uc?export=download&id=${fileId}&_=${bust}`,
-            {
-              headers: {
-                "user-agent": "Mozilla/5.0 (compatible; SchoolMenuBot/1.0)",
-                "cache-control": "no-cache",
-                pragma: "no-cache",
-              },
-              cache: "no-store",
-            },
-          );
-          if (!res.ok) {
-            return new Response(
-              JSON.stringify({ ok: false, error: `download failed ${res.status}` }),
-              { status: 500, headers: { "Content-Type": "application/json" } },
-            );
-          }
-          const SAFE_HEADERS = ["last-modified", "etag", "cache-control", "content-length", "date"];
-          const responseHeaders = Object.fromEntries(
-            SAFE_HEADERS.map((h) => [h, res.headers.get(h)]),
-          );
-          const buf = new Uint8Array(await res.arrayBuffer());
-          const doc = await getDocumentProxy(buf);
-          const { text } = await extractText(doc, { mergePages: false });
-          const pages = Array.isArray(text) ? text : [text];
-          const { items } = await extractTextItems(doc);
-          const lunchItems = (items[1] ?? []).map((it) => ({
-            str: it.str,
-            x: Math.round(it.x),
-            y: Math.round(it.y),
-            hasEOL: it.hasEOL,
-          }));
-          return new Response(
-            JSON.stringify({
-              ok: true,
-              fileId,
-              pageCount: pages.length,
-              byteLength: buf.byteLength,
-              responseHeaders,
-              lunchItems,
-            }),
-            {
-              headers: { "Content-Type": "application/json" },
-            },
-          );
+
+          const menu = await getMonthMenu(month, year);
+          return new Response(JSON.stringify({ ok: true, menu }), {
+            headers: { "Content-Type": "application/json" },
+          });
         } catch (error) {
           return new Response(
             JSON.stringify({

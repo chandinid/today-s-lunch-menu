@@ -1,4 +1,4 @@
-import { extractText, getDocumentProxy } from "unpdf";
+import { extractTextItems, getDocumentProxy, type StructuredTextItem } from "unpdf";
 import { getStore } from "@netlify/blobs";
 import { getAllergenIndex, matchAllergens, matchVegetarian } from "./allergens.server";
 import { callClaudeForJson } from "./claude.server";
@@ -113,6 +113,120 @@ export async function findPreKMenuFileId(): Promise<string | null> {
   return null;
 }
 
+const Y_TOLERANCE = 3;
+
+/** One reading-order row of text items, all sharing roughly the same y (PDF coordinate space —
+ * higher y is higher on the page). */
+type PageRow = { y: number; items: StructuredTextItem[] };
+
+function groupRows(items: StructuredTextItem[]): PageRow[] {
+  const rows: PageRow[] = [];
+  for (const it of items) {
+    if (!it.str.trim()) continue;
+    const row = rows.find((r) => Math.abs(r.y - it.y) <= Y_TOLERANCE);
+    if (row) row.items.push(it);
+    else rows.push({ y: it.y, items: [it] });
+  }
+  for (const row of rows) row.items.sort((a, b) => a.x - b.x);
+  rows.sort((a, b) => b.y - a.y); // top of page first
+  return rows;
+}
+
+type DayColumn = { x: number; day: number };
+
+/** A "day header" row is a Monday-Friday row of bare day-of-month numbers (e.g. "7  8  9  10
+ * 11"), strictly increasing left to right — the one reliable anchor for which x-position belongs
+ * to which day in the row-block below it. Returns null for any row that isn't one. */
+function dayHeaderColumns(row: PageRow): DayColumn[] | null {
+  const cells = row.items
+    .map((it) => it.str.trim())
+    .map((str, idx) => ({ str, x: row.items[idx]!.x }))
+    .filter(({ str }) => /^\d{1,2}$/.test(str))
+    .map(({ str, x }) => ({ x, day: Number(str) }))
+    .filter(({ day }) => day >= 1 && day <= 31);
+  if (cells.length < 2) return null;
+  for (let i = 1; i < cells.length; i++) {
+    if (cells[i]!.day <= cells[i - 1]!.day) return null;
+  }
+  return cells;
+}
+
+function nearestColumn(x: number, columns: DayColumn[]): number {
+  let best = columns[0]!;
+  let bestDist = Math.abs(x - best.x);
+  for (const c of columns) {
+    const dist = Math.abs(x - c.x);
+    if (dist < bestDist) {
+      best = c;
+      bestDist = dist;
+    }
+  }
+  return best.day;
+}
+
+const WEEKDAY_RE = /^(Monday|Tuesday|Wednesday|Thursday|Friday)$/i;
+
+/** Reconstructs a "day-of-month -> cell text" map from a page's positional text items. This is
+ * the fix for a real bug: unpdf's plain extractText() only returns a flat left-to-right,
+ * top-to-bottom stream of text with no notion of columns, so when a mid-week cell is genuinely
+ * blank (e.g. a day with no menu item yet), the text from later days in that row silently shifts
+ * left and gets attributed to the wrong (earlier) day. Using each row's x-position against that
+ * week's day-number header sidesteps this — a blank cell just contributes no text, instead of
+ * vanishing and dragging its neighbors' text out of place. */
+function reconstructPage(items: StructuredTextItem[]): {
+  title: string;
+  dayText: Map<number, string>;
+} {
+  const rows = groupRows(items);
+  const dayLines = new Map<number, string[]>();
+  const titleLines: string[] = [];
+  let columns: DayColumn[] | null = null;
+
+  for (const row of rows) {
+    const header = dayHeaderColumns(row);
+    if (header) {
+      columns = header;
+      for (const c of columns) if (!dayLines.has(c.day)) dayLines.set(c.day, []);
+      continue;
+    }
+    if (!columns) {
+      titleLines.push(
+        row.items
+          .map((it) => it.str.trim())
+          .filter(Boolean)
+          .join(" "),
+      );
+      continue;
+    }
+
+    const words = row.items.map((it) => it.str.trim()).filter(Boolean);
+    if (words.length > 0 && words.every((w) => WEEKDAY_RE.test(w))) continue; // "Monday Tuesday..."
+
+    const buckets = new Map<number, string[]>();
+    for (const it of row.items) {
+      const text = it.str.trim();
+      if (!text) continue;
+      const day = nearestColumn(it.x, columns);
+      if (!buckets.has(day)) buckets.set(day, []);
+      buckets.get(day)!.push(text);
+    }
+    for (const [day, cellWords] of buckets) {
+      const text = cellWords.join(" ").replace(/\s+/g, " ").trim();
+      if (!text) continue;
+      if (!dayLines.has(day)) dayLines.set(day, []);
+      dayLines.get(day)!.push(text);
+    }
+  }
+
+  const dayText = new Map<number, string>();
+  for (const [day, lines] of dayLines) {
+    dayText.set(day, lines.join(" ").replace(/\s+/g, " ").trim());
+  }
+  return { title: titleLines.filter(Boolean).join(" "), dayText };
+}
+
+const PAGE_LABELS = ["BREAKFAST", "LUNCH", "SNACK"];
+
 async function pdfPages(fileId: string): Promise<string[]> {
   const res = await fetch(`https://drive.google.com/uc?export=download&id=${fileId}`, {
     headers: { "user-agent": "Mozilla/5.0 (compatible; SchoolMenuBot/1.0)" },
@@ -120,27 +234,35 @@ async function pdfPages(fileId: string): Promise<string[]> {
   if (!res.ok) throw new Error(`Could not download the menu PDF (${res.status})`);
   const buf = new Uint8Array(await res.arrayBuffer());
   const doc = await getDocumentProxy(buf);
-  const { text } = await extractText(doc, { mergePages: false });
-  return Array.isArray(text) ? text : [text];
+  const { items } = await extractTextItems(doc);
+  return items.map((pageItems) => {
+    const { title, dayText } = reconstructPage(pageItems);
+    const days = [...dayText.keys()].sort((a, b) => a - b);
+    const lines = days.map((day) => `Day ${day}: ${dayText.get(day) || "(blank)"}`);
+    return `${title}\n${lines.join("\n")}`;
+  });
 }
 
-const SYSTEM_PROMPT = `You convert a school meal calendar PDF into JSON.
-The PDF has pages for BREAKFAST, LUNCH and SNACK laid out as a Monday-Friday calendar.
-Each cell starts with the day-of-month number followed by the meal.
+const SYSTEM_PROMPT = `You convert an already-parsed school meal calendar into JSON.
+Each page (BREAKFAST, LUNCH, or SNACK) has been pre-processed into one line per day of the
+month, in the exact format "Day N: <item text>" or "Day N: (blank)" when that day's cell has no
+menu item. This day-to-text mapping was built from the PDF's actual table columns and is already
+correct and complete — do not renumber, reorder, shift, or guess at which day text belongs to;
+just carry each day's text into the JSON exactly as given.
 Return ONLY JSON of the shape:
 {"month":"September","days":[{"day":1,"breakfast":"...","lunch":"...","snack":"..."}]}
 Rules:
-- "month" is the calendar month name this PDF's calendar is for (e.g. "September"), read from the PDF's own heading/title text. Use null if you can't tell.
-- One entry per day number that appears anywhere in the calendars, sorted ascending.
-- Use null for a meal that has no item that day.
-- Keep the item wording from the PDF, including "Upon Request: ..." alternatives, but strip the leading day number.
-- If a cell says HOLIDAY or NO SCHOOL, use exactly "HOLIDAY" for that meal.
+- "month" is the calendar month name this PDF is for, read from the title text above each page's day lines. Use null if you can't tell.
+- One entry per day number that appears on ANY of the three pages, sorted ascending — union them; a day that's "(blank)" on every page still gets an entry with all meals null.
+- "(blank)" for a given meal means null for that meal — never invent text for it and never let it absorb text from a neighboring day.
+- Keep the item wording exactly as given, including "Upon Request: ..." alternatives.
+- If a day's text says HOLIDAY or NO SCHOOL, use exactly "HOLIDAY" for every meal that day.
 - Respond with ONLY the JSON object — no markdown code fences, no explanation, no other text.`;
 
 async function parseWithAI(pages: string[]): Promise<{ month: string | null; days: MenuDay[] }> {
   const parsed = (await callClaudeForJson(
     SYSTEM_PROMPT,
-    pages.map((p, i) => `--- PDF PAGE ${i + 1} ---\n${p}`).join("\n\n"),
+    pages.map((p, i) => `--- ${PAGE_LABELS[i] ?? `PAGE ${i + 1}`} PAGE ---\n${p}`).join("\n\n"),
   )) as {
     month?: string | null;
     days?: {
