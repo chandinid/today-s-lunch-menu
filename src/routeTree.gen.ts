@@ -10,11 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicDebugPdfRouteImport } from './routes/api/public/debug-pdf'
 import { Route as ApiPublicRefreshMenusRouteImport } from './routes/api/public/refresh-menus'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicDebugPdfRoute = ApiPublicDebugPdfRouteImport.update({
+  id: '/api/public/debug-pdf',
+  path: '/api/public/debug-pdf',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicRefreshMenusRoute = ApiPublicRefreshMenusRouteImport.update({
@@ -25,27 +31,31 @@ const ApiPublicRefreshMenusRoute = ApiPublicRefreshMenusRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/public/debug-pdf': typeof ApiPublicDebugPdfRoute
   '/api/public/refresh-menus': typeof ApiPublicRefreshMenusRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/public/debug-pdf': typeof ApiPublicDebugPdfRoute
   '/api/public/refresh-menus': typeof ApiPublicRefreshMenusRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/public/debug-pdf': typeof ApiPublicDebugPdfRoute
   '/api/public/refresh-menus': typeof ApiPublicRefreshMenusRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/public/refresh-menus'
+  fullPaths: '/' | '/api/public/debug-pdf' | '/api/public/refresh-menus'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/public/refresh-menus'
-  id: '__root__' | '/' | '/api/public/refresh-menus'
+  to: '/' | '/api/public/debug-pdf' | '/api/public/refresh-menus'
+  id: '__root__' | '/' | '/api/public/debug-pdf' | '/api/public/refresh-menus'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiPublicDebugPdfRoute: typeof ApiPublicDebugPdfRoute
   ApiPublicRefreshMenusRoute: typeof ApiPublicRefreshMenusRoute
 }
 
@@ -56,6 +66,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/debug-pdf': {
+      id: '/api/public/debug-pdf'
+      path: '/api/public/debug-pdf'
+      fullPath: '/api/public/debug-pdf'
+      preLoaderRoute: typeof ApiPublicDebugPdfRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/refresh-menus': {
@@ -70,6 +87,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiPublicDebugPdfRoute: ApiPublicDebugPdfRoute,
   ApiPublicRefreshMenusRoute: ApiPublicRefreshMenusRoute,
 }
 export const routeTree = rootRouteImport
