@@ -77,29 +77,39 @@ function Index() {
     staleTime: 1000 * 60 * 30,
   });
 
-  // Prefetch adjacent months so the prev/next arrows feel instant.
+  // Prefetch a neighboring month on hover/focus of its nav arrow, so the arrows still feel
+  // instant for anyone who actually pauses over them — but only on demand. This used to run
+  // unconditionally for both neighbors on every page load, which meant every single visit
+  // triggered up to two extra full PDF-download-and-AI-parse cycles for months nobody asked to
+  // see (the "previous month" one in particular is never kept warm by the refresh cron, so it's
+  // almost always a cold ~15-20s parse). On a slow SFUSD/Google Drive response that's long
+  // enough to bump into Netlify's function timeout, which showed up as the site loading blank
+  // and needing a reload — for the current month's own request, not just the prefetch.
   const queryClient = useQueryClient();
-  const adjacent = [
-    {
-      month: cursor.month === 0 ? 11 : cursor.month - 1,
-      year: cursor.month === 0 ? cursor.year - 1 : cursor.year,
-    },
-    {
-      month: cursor.month === 11 ? 0 : cursor.month + 1,
-      year: cursor.month === 11 ? cursor.year + 1 : cursor.year,
-    },
-  ];
-  useEffect(() => {
-    for (const a of adjacent) {
-      const am = MONTHS[a.month]!;
-      queryClient.prefetchQuery({
-        queryKey: ["menu", am, a.year],
-        queryFn: () => fetchMonthMenu({ data: { month: am, year: a.year } }),
-        staleTime: 1000 * 60 * 30,
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cursor.month, cursor.year]);
+  function prefetchMonth(direction: -1 | 1) {
+    const targetMonth =
+      direction === -1
+        ? cursor.month === 0
+          ? 11
+          : cursor.month - 1
+        : cursor.month === 11
+          ? 0
+          : cursor.month + 1;
+    const targetYear =
+      direction === -1
+        ? cursor.month === 0
+          ? cursor.year - 1
+          : cursor.year
+        : cursor.month === 11
+          ? cursor.year + 1
+          : cursor.year;
+    const am = MONTHS[targetMonth]!;
+    queryClient.prefetchQuery({
+      queryKey: ["menu", am, targetYear],
+      queryFn: () => fetchMonthMenu({ data: { month: am, year: targetYear } }),
+      staleTime: 1000 * 60 * 30,
+    });
+  }
 
   const days = data?.ok ? data.menu.days : [];
   const pdfUrl = data?.ok ? data.menu.pdfUrl : undefined;
@@ -121,7 +131,7 @@ function Index() {
           className="mx-auto mt-1.5 h-3 w-40 text-primary sm:w-52"
         >
           <path
-            d="M2 8c8-8 16 6 24-2s16 6 24-2 16 6 24-2 16 6 24-2 16 6 24-2 16 6 24-2"
+            d="M2 8c8-8 16 6 24-2s16 6 24-2 16 6 24-2 16 6 24-2 16 6 24-2 16 6 24-2 16 6 24-2"
             fill="none"
             stroke="currentColor"
             strokeWidth="3"
@@ -157,6 +167,8 @@ function Index() {
             </div>
             <NavButton
               label="Previous month"
+              onMouseEnter={() => prefetchMonth(-1)}
+              onFocus={() => prefetchMonth(-1)}
               onClick={() =>
                 setCursor((c) => ({
                   month: c.month === 0 ? 11 : c.month - 1,
@@ -171,6 +183,8 @@ function Index() {
             </span>
             <NavButton
               label="Next month"
+              onMouseEnter={() => prefetchMonth(1)}
+              onFocus={() => prefetchMonth(1)}
               onClick={() =>
                 setCursor((c) => ({
                   month: c.month === 11 ? 0 : c.month + 1,
@@ -393,16 +407,22 @@ function NavButton({
   children,
   label,
   onClick,
+  onMouseEnter,
+  onFocus,
 }: {
   children: React.ReactNode;
   label: string;
   onClick: () => void;
+  onMouseEnter?: () => void;
+  onFocus?: () => void;
 }) {
   return (
     <button
       type="button"
       aria-label={label}
       onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      onFocus={onFocus}
       className="flex size-9 items-center justify-center rounded-full border border-border bg-card text-lg font-bold text-primary transition-colors hover:bg-secondary"
     >
       {children}
