@@ -11,9 +11,11 @@ import { findPreKMenuFileId } from "@/lib/menu.server";
 export const Route = createFileRoute("/api/public/debug-pdf")({
   server: {
     handlers: {
-      GET: async () => {
+      GET: async ({ request }: { request: Request }) => {
         try {
-          const fileId = await findPreKMenuFileId();
+          const url = new URL(request.url);
+          const override = url.searchParams.get("fileId");
+          const fileId = override || (await findPreKMenuFileId());
           if (!fileId) {
             return new Response(JSON.stringify({ ok: false, error: "No fileId found" }), {
               status: 404,
