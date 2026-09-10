@@ -46,7 +46,12 @@ export type MonthMenu = {
   days: MenuDay[];
 };
 
-type CacheEntry = { value: MonthMenu; expires: number };
+// Bump this whenever getMonthMenu's parsing/shape changes enough that previously-cached entries
+// should be considered stale — that invalidates every cached month on the next deploy without
+// needing a one-off debug route to manually clear Netlify Blobs each time.
+const CACHE_SCHEMA_VERSION = 2;
+
+type CacheEntry = { value: MonthMenu; expires: number; schemaVersion: number };
 // A plain in-memory Map only lives as long as one serverless function instance — on Netlify that
 // instance is thrown away on every cold start (which happens often for a low-traffic site, and
 // on every new deploy), so relying on it alone meant most visits re-downloaded the PDF and re-ran
@@ -55,6 +60,23 @@ type CacheEntry = { value: MonthMenu; expires: number };
 // shared across every instance and across cold starts.
 const cache = new Map<string, CacheEntry>();
 const TTL_MS = 1000 * 60 * 60 * 6;
+
+/** Once a month has fully ended, its menu is frozen — see getMonthMenu. */
+function isPastMonth(month: string, year: number, now: Date): boolean {
+  const idx = MONTHS.indexOf(month as (typeof MONTHS)[number]);
+  if (idx === -1) return false;
+  if (year !== now.getFullYear()) return year < now.getFullYear();
+  return idx < now.getMonth();
+}
+
+/** Whether a cached entry can be served as-is. A past month is frozen: once we have anything for
+ * it, that's permanent — there's no live source left to re-check against (SFUSD only keeps one
+ * standing PDF link for whichever month is current), so schema/TTL staleness doesn't matter, it's
+ * this or nothing. The current/future months still need both a matching schema and a live TTL. */
+function isCacheEntryUsable(entry: CacheEntry, past: boolean): boolean {
+  if (past) return true;
+  return entry.schemaVersion === CACHE_SCHEMA_VERSION && entry.expires > Date.now();
+}
 
 /** Netlify Blobs auto-configures itself from the deploy's runtime context, which is only present
  * when this actually runs as a deployed Netlify Function — not in local dev. Fall back to
@@ -302,13 +324,24 @@ async function parseWithAI(pages: string[]): Promise<{ month: string | null; day
 
 export async function getMonthMenu(month: string, year: number): Promise<MonthMenu> {
   const key = `${month}-${year}`;
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
+  const past = isPastMonth(month, year, now);
+
   const memHit = cache.get(key);
-  if (memHit && memHit.expires > Date.now()) return memHit.value;
+  if (memHit && isCacheEntryUsable(memHit, past)) return memHit.value;
 
   const persistedHit = await readPersistedCache(key);
-  if (persistedHit && persistedHit.expires > Date.now()) {
+  if (persistedHit && isCacheEntryUsable(persistedHit, past)) {
     cache.set(key, persistedHit);
     return persistedHit.value;
+  }
+
+  if (past) {
+    // A month that's already ended has nothing left to check live against — SFUSD replaces
+    // its one standing PDF link in place, so once a month is over, whatever we captured while
+    // it was still current (above) is all there will ever be. Fail fast instead of spending
+    // 15-20s on a PDF download + AI parse that can only ever end in "not the right month."
+    throw new Error(`No archived Pre-K menu on file for ${month} ${year}.`);
   }
 
   const fileId = await findPreKMenuFileId();
@@ -348,7 +381,11 @@ export async function getMonthMenu(month: string, year: number): Promise<MonthMe
     pdfUrl: `https://drive.google.com/file/d/${fileId}/view`,
     days,
   };
-  const entry: CacheEntry = { value, expires: Date.now() + TTL_MS };
+  const entry: CacheEntry = {
+    value,
+    expires: Date.now() + TTL_MS,
+    schemaVersion: CACHE_SCHEMA_VERSION,
+  };
   cache.set(key, entry);
   await writePersistedCache(key, entry);
   return value;
