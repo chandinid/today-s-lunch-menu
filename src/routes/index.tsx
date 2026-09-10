@@ -278,6 +278,10 @@ function Index() {
           ) : null}
           . Menus are subject to change.
         </p>
+        <p className="mt-3 italic">
+          Not affiliated with or endorsed by SFUSD — just a tired preschool parent who got sick of
+          squinting at a PDF every morning and made this instead.
+        </p>
         <a
           className="mt-4 inline-block"
           href="https://www.buymeacoffee.com/Chandinid"
