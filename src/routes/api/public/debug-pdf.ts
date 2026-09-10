@@ -22,21 +22,38 @@ export const Route = createFileRoute("/api/public/debug-pdf")({
               headers: { "Content-Type": "application/json" },
             });
           }
-          const res = await fetch(`https://drive.google.com/uc?export=download&id=${fileId}`, {
-            headers: { "user-agent": "Mozilla/5.0 (compatible; SchoolMenuBot/1.0)" },
-          });
+          const bust = Date.now();
+          const res = await fetch(
+            `https://drive.google.com/uc?export=download&id=${fileId}&_=${bust}`,
+            {
+              headers: {
+                "user-agent": "Mozilla/5.0 (compatible; SchoolMenuBot/1.0)",
+                "cache-control": "no-cache",
+                pragma: "no-cache",
+              },
+              cache: "no-store",
+            },
+          );
           if (!res.ok) {
             return new Response(
               JSON.stringify({ ok: false, error: `download failed ${res.status}` }),
               { status: 500, headers: { "Content-Type": "application/json" } },
             );
           }
+          const responseHeaders = Object.fromEntries(res.headers.entries());
           const buf = new Uint8Array(await res.arrayBuffer());
           const doc = await getDocumentProxy(buf);
           const { text } = await extractText(doc, { mergePages: false });
           const pages = Array.isArray(text) ? text : [text];
           return new Response(
-            JSON.stringify({ ok: true, fileId, pageCount: pages.length, pages }),
+            JSON.stringify({
+              ok: true,
+              fileId,
+              pageCount: pages.length,
+              byteLength: buf.byteLength,
+              responseHeaders,
+              pages,
+            }),
             {
               headers: { "Content-Type": "application/json" },
             },
