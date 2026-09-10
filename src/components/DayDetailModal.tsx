@@ -1,5 +1,5 @@
 import type { MenuDay } from "@/lib/menu.functions";
-import { splitMealText } from "@/lib/meal-text";
+import { hasAnyMeal, splitMealText } from "@/lib/meal-text";
 
 export const LEAF = "🍃";
 
@@ -70,6 +70,8 @@ export function DayDetailModal({
 
         {holiday ? (
           <p className="mt-4 text-sm font-bold text-berry">Holiday — no meals served</p>
+        ) : !hasAnyMeal(entry) ? (
+          <p className="mt-4 text-sm text-muted-foreground">No meal posted for this day yet.</p>
         ) : (
           <dl className="mt-4 space-y-4">
             {MEALS.map((meal) => {

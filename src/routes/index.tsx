@@ -6,7 +6,7 @@ import { fetchMonthMenu, type MenuDay } from "@/lib/menu.functions";
 import { MenuCalendar } from "@/components/MenuCalendar";
 import { DayCarousel } from "@/components/DayCarousel";
 import { DayDetailModal, LEAF, MEALS } from "@/components/DayDetailModal";
-import { splitMealText } from "@/lib/meal-text";
+import { hasAnyMeal, splitMealText } from "@/lib/meal-text";
 
 const MONTHS = [
   "January",
@@ -349,6 +349,8 @@ function DayCard({
       </div>
       {holiday ? (
         <p className="mt-2 text-sm font-bold text-berry">Holiday — no meals served</p>
+      ) : !hasAnyMeal(entry) ? (
+        <p className="mt-2 text-sm text-muted-foreground">No meal posted</p>
       ) : (
         <dl className="mt-2 space-y-3 text-sm">
           {MEALS.map((meal) => {

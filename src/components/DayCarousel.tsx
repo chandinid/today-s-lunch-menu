@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import { fetchMonthMenu, type MenuDay } from "@/lib/menu.functions";
-import { splitMealText } from "@/lib/meal-text";
+import { hasAnyMeal, splitMealText } from "@/lib/meal-text";
 import { DayDetailModal, LEAF } from "@/components/DayDetailModal";
 
 const MONTHS = [
@@ -162,7 +162,7 @@ export function DayCarousel({ today }: { today: Date }) {
           menu={selectedMenu}
           today={anchor}
           layer="front"
-          onClick={() => selectedMenu.entry && setShowDetail(true)}
+          onClick={() => hasAnyMeal(selectedMenu.entry) && setShowDetail(true)}
         />
 
         <CarouselArrow label="Next day" side="right" onClick={() => setSelected(nextDate)} />
@@ -271,7 +271,7 @@ function DayFrame({
             </>
           ) : holiday ? (
             <p className="text-sm font-bold text-berry">Holiday — no meals</p>
-          ) : entry ? (
+          ) : hasAnyMeal(entry) ? (
             MEAL_ORDER.map((meal) => {
               const value = entry[meal.key];
               if (!value) return null;

@@ -1,5 +1,5 @@
 import type { MenuDay } from "@/lib/menu.functions";
-import { splitMealText } from "@/lib/meal-text";
+import { hasAnyMeal, splitMealText } from "@/lib/meal-text";
 
 const LEAF = "🍃";
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
@@ -122,7 +122,7 @@ function CalendarCell({
   const { day, entry } = cell;
   const holiday = entry?.lunch === "HOLIDAY" || entry?.breakfast === "HOLIDAY";
   const isToday = todayDate === day;
-  const clickable = Boolean(onSelectDay) && Boolean(entry) && !holiday;
+  const clickable = Boolean(onSelectDay) && hasAnyMeal(entry) && !holiday;
 
   return (
     <button
@@ -157,7 +157,7 @@ function CalendarCell({
       </div>
       {holiday ? (
         <p className="mt-2 text-xs font-bold text-berry">Holiday — no meals</p>
-      ) : entry ? (
+      ) : hasAnyMeal(entry) ? (
         <ul className="mt-1.5 space-y-1.5 text-[0.72rem] leading-snug">
           {MEALS.map((meal) => {
             const value = entry[meal.key];
