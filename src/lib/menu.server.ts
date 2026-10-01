@@ -336,59 +336,71 @@ export async function getMonthMenu(month: string, year: number): Promise<MonthMe
     return persistedHit.value;
   }
 
-  if (past) {
-    // A month that's already ended has nothing left to check live against — SFUSD replaces
-    // its one standing PDF link in place, so once a month is over, whatever we captured while
-    // it was still current (above) is all there will ever be. Fail fast instead of spending
-    // 15-20s on a PDF download + AI parse that can only ever end in "not the right month."
+  // A month that's calendar-past with nothing at all on file (fresh or stale) has no live
+  // source left to check — SFUSD only keeps one standing PDF link for whichever month is
+  // current — so fail fast instead of spending 15-20s confirming that.
+  if (past && !persistedHit) {
     throw new Error(`No archived Pre-K menu on file for ${month} ${year}.`);
   }
 
-  const fileId = await findPreKMenuFileId();
-  if (!fileId) {
-    throw new Error(`SFUSD hasn't posted the Pre-K menu for ${month} yet.`);
-  }
-
-  const pages = await pdfPages(fileId);
-  const { month: detectedMonth, days } = await parseWithAI(pages);
-
-  // SFUSD now publishes a single standing Pre-K menu link that they update in place each
-  // month, rather than a fresh file per month — so confirm the PDF we just downloaded is
-  // actually for the month being requested before trusting it as that month's menu (e.g. so
-  // browsing forward to a month SFUSD hasn't posted yet doesn't silently show this month's
-  // items relabeled under the wrong dates).
-  if (detectedMonth && detectedMonth.toLowerCase() !== month.toLowerCase()) {
-    throw new Error(`SFUSD hasn't posted the Pre-K menu for ${month} yet.`);
-  }
-
   try {
-    const allergenIndex = await getAllergenIndex();
-    for (const d of days) {
-      d.breakfastAllergens = matchAllergens(d.breakfast, allergenIndex.breakfast);
-      d.lunchAllergens = matchAllergens(d.lunch, allergenIndex.lunch);
-      d.snackAllergens = matchAllergens(d.snack, allergenIndex.snack);
-      d.lunchVegetarian = matchVegetarian(d.lunch, allergenIndex.lunch);
+    const fileId = await findPreKMenuFileId();
+    if (!fileId) {
+      throw new Error(`SFUSD hasn't posted the Pre-K menu for ${month} yet.`);
     }
-  } catch (error) {
-    // Allergen matching is best-effort and never blocks the menu itself.
-    console.error("Allergen matching failed", error);
-  }
 
-  const value: MonthMenu = {
-    month,
-    year,
-    sourceUrl: MENUS_PAGE_URL,
-    pdfUrl: `https://drive.google.com/file/d/${fileId}/view`,
-    days,
-  };
-  const entry: CacheEntry = {
-    value,
-    expires: Date.now() + TTL_MS,
-    schemaVersion: CACHE_SCHEMA_VERSION,
-  };
-  cache.set(key, entry);
-  await writePersistedCache(key, entry);
-  return value;
+    const pages = await pdfPages(fileId);
+    const { month: detectedMonth, days } = await parseWithAI(pages);
+
+    // SFUSD publishes a single standing Pre-K menu link that they update in place, often a few
+    // days BEFORE the calendar month actually turns over — so the live PDF can already show
+    // next month's content while this request is still asking for the current (about-to-end)
+    // one, even though our own "is this month past yet" check above hasn't flipped. Confirm the
+    // PDF we just downloaded is actually for the month being requested before trusting it.
+    if (detectedMonth && detectedMonth.toLowerCase() !== month.toLowerCase()) {
+      throw new Error(`SFUSD hasn't posted the Pre-K menu for ${month} yet.`);
+    }
+
+    try {
+      const allergenIndex = await getAllergenIndex();
+      for (const d of days) {
+        d.breakfastAllergens = matchAllergens(d.breakfast, allergenIndex.breakfast);
+        d.lunchAllergens = matchAllergens(d.lunch, allergenIndex.lunch);
+        d.snackAllergens = matchAllergens(d.snack, allergenIndex.snack);
+        d.lunchVegetarian = matchVegetarian(d.lunch, allergenIndex.lunch);
+      }
+    } catch (error) {
+      // Allergen matching is best-effort and never blocks the menu itself.
+      console.error("Allergen matching failed", error);
+    }
+
+    const value: MonthMenu = {
+      month,
+      year,
+      sourceUrl: MENUS_PAGE_URL,
+      pdfUrl: `https://drive.google.com/file/d/${fileId}/view`,
+      days,
+    };
+    const entry: CacheEntry = {
+      value,
+      expires: Date.now() + TTL_MS,
+      schemaVersion: CACHE_SCHEMA_VERSION,
+    };
+    cache.set(key, entry);
+    await writePersistedCache(key, entry);
+    return value;
+  } catch (error) {
+    // The live source has moved on — SFUSD swapped their one standing PDF link to a different
+    // month before our own calendar check caught up — or is just temporarily unreachable. If we
+    // have ANY previously-successful data for this exact month on file, however stale, serving
+    // that beats a dead "no meals posted" page, especially once the live source can genuinely
+    // never produce this month's menu again.
+    if (persistedHit) {
+      cache.set(key, persistedHit);
+      return persistedHit.value;
+    }
+    throw error;
+  }
 }
 
 /**
