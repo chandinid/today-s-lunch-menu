@@ -110,25 +110,35 @@ async function writePersistedCache(key: string, entry: CacheEntry): Promise<void
   }
 }
 
-/** Scrape the SFUSD menus page for the Pre-K Breakfast/Lunch/Snack Drive file. SFUSD used to
- * post a fresh "LunchMaster PreK" file per month under a "{Month} Menus" heading; they've since
- * switched vendors to Revolution Foods and now publish a single standing "Pre-K Breakfast,
- * Lunch, and Snack" link that they update in place, so there's just one file to find rather than
- * one per month. Matching on the link's own visible text (not which vendor heading it sits
- * under) keeps this working across future vendor swaps too. */
-export async function findPreKMenuFileId(): Promise<string | null> {
+/** Scrape the SFUSD menus page for the Pre-K Breakfast/Lunch/Snack Drive file for a given month.
+ * SFUSD's page layout has changed shape twice now: originally a fresh "LunchMaster PreK" file
+ * per month under a "{Month} Menus" heading; then, after switching vendors to Revolution Foods,
+ * a single standing "Pre-K Breakfast, Lunch, and Snack" link they updated in place (so there was
+ * just one file, and it alone could swap to the next month's content ahead of the calendar —
+ * see the month-mismatch guard in getMonthMenu, kept as a safety net below). As of October 2026
+ * they publish one Drive link per currently-available month again, all on the same line: a
+ * "Pre-K Breakfast, Lunch, and Snack" label (in a <strong>, not inside any <a>) followed by a
+ * "September | October" pair of links whose own visible text is just the month name. Find that
+ * label's paragraph first, then the specific month's link inside it, rather than matching "Pre-K"
+ * against an anchor's own text (there usually isn't one anymore). */
+export async function findPreKMenuFileId(month: string): Promise<string | null> {
   const res = await fetch(MENUS_PAGE_URL, {
     headers: { "user-agent": "Mozilla/5.0 (compatible; SchoolMenuBot/1.0)" },
   });
   if (!res.ok) throw new Error(`Could not load the SFUSD menus page (${res.status})`);
   const html = await res.text();
 
+  const paragraphRe =
+    /<p>(?:(?!<\/p>)[\s\S])*?Pre-K Breakfast,\s*Lunch,?\s*and\s*Snack(?:(?!<\/p>)[\s\S])*?<\/p>/i;
+  const block = paragraphRe.exec(html)?.[0];
+  if (!block) return null;
+
   const linkRe =
-    /<a[^>]+href="https:\/\/drive\.google\.com\/file\/d\/([^/"]+)[^"]*"[^>]*>([\s\S]{0,200}?)<\/a>/g;
+    /<a[^>]+href="https:\/\/drive\.google\.com\/file\/d\/([^/"]+)[^"]*"[^>]*>([\s\S]{0,100}?)<\/a>/g;
   let m: RegExpExecArray | null;
-  while ((m = linkRe.exec(html))) {
-    const text = (m[2] ?? "").replace(/<[^>]*>/g, "");
-    if (/pre\s*-?\s*k/i.test(text)) {
+  while ((m = linkRe.exec(block))) {
+    const text = (m[2] ?? "").replace(/<[^>]*>/g, "").trim();
+    if (new RegExp(`^${month}`, "i").test(text)) {
       return m[1] as string;
     }
   }
@@ -336,15 +346,17 @@ export async function getMonthMenu(month: string, year: number): Promise<MonthMe
     return persistedHit.value;
   }
 
-  // A month that's calendar-past with nothing at all on file (fresh or stale) has no live
-  // source left to check — SFUSD only keeps one standing PDF link for whichever month is
-  // current — so fail fast instead of spending 15-20s confirming that.
+  // A month that's calendar-past with nothing at all on file (fresh or stale) is treated as
+  // permanently unfetchable rather than worth a live check every time: SFUSD has only shown two
+  // months' links live at once in practice, so an old month can disappear from the page with no
+  // notice, and there's no reason to keep paying the 15-20s parse cost for a month we already
+  // know has no archived copy.
   if (past && !persistedHit) {
     throw new Error(`No archived Pre-K menu on file for ${month} ${year}.`);
   }
 
   try {
-    const fileId = await findPreKMenuFileId();
+    const fileId = await findPreKMenuFileId(month);
     if (!fileId) {
       throw new Error(`SFUSD hasn't posted the Pre-K menu for ${month} yet.`);
     }
@@ -352,11 +364,9 @@ export async function getMonthMenu(month: string, year: number): Promise<MonthMe
     const pages = await pdfPages(fileId);
     const { month: detectedMonth, days } = await parseWithAI(pages);
 
-    // SFUSD publishes a single standing Pre-K menu link that they update in place, often a few
-    // days BEFORE the calendar month actually turns over — so the live PDF can already show
-    // next month's content while this request is still asking for the current (about-to-end)
-    // one, even though our own "is this month past yet" check above hasn't flipped. Confirm the
-    // PDF we just downloaded is actually for the month being requested before trusting it.
+    // findPreKMenuFileId already fetches the link labeled for the requested month, so this
+    // should always match — but it's a cheap sanity check against SFUSD mislabeling a link or
+    // reusing a prior month's file under a new month's label, so it stays as a safety net.
     if (detectedMonth && detectedMonth.toLowerCase() !== month.toLowerCase()) {
       throw new Error(`SFUSD hasn't posted the Pre-K menu for ${month} yet.`);
     }
