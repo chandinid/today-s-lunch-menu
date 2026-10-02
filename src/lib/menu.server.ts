@@ -421,10 +421,13 @@ export async function getMonthMenu(month: string, year: number): Promise<MonthMe
  * A failure for one month (e.g. next month's PDF not posted yet) is not fatal —
  * it just means that month stays cold until SFUSD publishes it.
  */
-export async function prewarmMenus(): Promise<{ warmed: string[]; skipped: string[] }> {
+export async function prewarmMenus(): Promise<{
+  warmed: string[];
+  skipped: { month: string; error: string }[];
+}> {
   const now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
   const warmed: string[] = [];
-  const skipped: string[] = [];
+  const skipped: { month: string; error: string }[] = [];
 
   const targets: { month: string; year: number }[] = [];
   for (let offset = 0; offset <= 1; offset += 1) {
@@ -437,8 +440,14 @@ export async function prewarmMenus(): Promise<{ warmed: string[]; skipped: strin
       try {
         await getMonthMenu(t.month, t.year);
         warmed.push(`${t.month} ${t.year}`);
-      } catch {
-        skipped.push(`${t.month} ${t.year}`);
+      } catch (error) {
+        // Surfacing the real error (not just the month name) here means a prewarm failure can be
+        // diagnosed from the /api/public/refresh-menus response alone, without a throwaway debug
+        // route each time — this is what caught the SFUSD page-layout change below.
+        skipped.push({
+          month: `${t.month} ${t.year}`,
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }),
   );
